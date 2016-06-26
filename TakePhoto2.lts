@@ -1,0 +1,49 @@
+const X_MAX =3
+const Y_MAX =4
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1]}
+set Controllable = {takeoff, land, move[X][Y], takephoto, Out}
+set Actions ={Controllable, end, out}
+
+
+fluent Land = <land, takeoff>
+fluent AIR = <takeoff, land>
+fluent TAKEPHOTO = <takephoto, end>
+fluent LOCATION[x:X][y:Y]=<move[x][y],{move[X][Y]}\{move[x][y]}>
+fluent OUT =<Out , {Actions}\{Out}>
+
+assert IN_AIR = AIR
+assert TAKE_PHOTO = (LOCATION[3][4]&&TAKEPHOTO)
+assert LAND = Land
+
+L1 = START,
+START =(takeoff -> L[0][0]),
+L[x:X][y:Y] =(takephoto -> end -> L[x][y]
+	| when (x == 0 && y == 0) land ->START
+	| when (x > 0) move[x-1][y] -> L[x-1][y]
+	| when (y > 0) move[x][y-1] -> L[x][y-1]
+	| when (x < X_MAX)move[x+1][y] -> L[x+1][y]
+	| when (y < Y_MAX)move[x][y+1] -> L[x][y+1]
+	| when (y == 0) move[x][y-1] -> OUT_CONTROLL
+	| when (x == 0) move[x-1][y] -> OUT_CONTROLL
+	| when (x == X_MAX)move[x+1][y] -> OUT_CONTROLL
+	| when (y == Y_MAX)move[x][y+1] -> OUT_CONTROLL
+	| when (x > 1)move[x-2][y] -> L[x-2][y]
+	| when (y > 1)move[x][y-2] -> L[x][y-2]
+	| when (x < X_MAX-1)move[x+2][y] -> L[x+2][y]
+	| when (y < Y_MAX-1)move[x][y+2] -> L[x][y+2]
+),
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+controllerSpec SPECIFICATION = {
+//	safety = {PREVENT,GOAL_ASSIST1,GOAL_ASSIST2,GOAL_ASSIST3}
+	assumption ={IN_AIR}
+	liveness = {TAKE_PHOTO,LAND}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

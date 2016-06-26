@@ -1,0 +1,152 @@
+
+
+
+//利用できるアクションの一覧
+//Moveaction:移動に関するアクション
+//floorinit: マップの初期位置へ移動する動作
+//Monitorble: センサーを使って検知することができる動作
+//		reach○○:○○端への到達を表す
+//		reach[X][Y] = 座標X,Yの地点に到達
+const X_max = 2
+const Y_max = 2
+range X = 0..X_max
+range Y = 0..Y_max
+set Moveaction = {right,left, front,back}
+set FloorControllable = {Moveaction,floorinit}
+set Monitorble = {reachright, reachleft,reachfront, reachback,reach[X][Y]} 
+
+
+//FSPによる環境モデルの定義
+//例:
+// LAND = (takeoff -> AIR | out -> OUT),
+// AIR = (land -> LAND | out -> OUT),
+// OUT = (out -> OUT).
+//コントローラブルアクション、モニタブルアクションを用いて環境モデルの定義
+//ヒントとして一部を載せる
+//
+FLOOR = (floorinit -> L[0][0]),
+L[0][0]= (right ->reach[1][0]-> L[1][0]|
+		left -> reachleft ->L[0][0]|
+		front -> reach[0][1]->L[0][1]|
+		back -> reachback -> L[0][0]),
+L[1][0]= (right ->reach[2][0]-> L[2][0]|
+		left -> reach[0][0] ->L[0][0]|
+		front -> reach[1][1]->L[1][1]|
+		back -> reachback -> L[1][0]),
+L[2][0]= (right ->reachright-> L[2][0]|
+		left -> reach[1][0] ->L[1][0]|
+		front -> reach[2][1]->L[2][1]|
+		back -> reachback -> L[2][0]),
+L[0][1]= (right ->reach[1][1]-> L[1][1]|
+		left -> reachleft ->L[0][1]|
+		front -> reach[0][2]->L[0][2]|
+		back -> reach[0][0] -> L[0][0]),
+L[1][1]= (right ->reach[2][1]-> L[2][1]|
+		left -> reach[0][1] ->L[0][1]|
+		front -> reach[1][2]->L[1][2]|
+		back -> reach[1][0] -> L[1][0]),
+L[2][1]= (right ->reachright-> L[2][1]|
+		left -> reach[1][1] ->L[1][1]|
+		front -> reach[2][2]->L[2][2]|
+		back -> reach[2][0] -> L[2][0]),
+L[0][2]= (right ->reach[1][2]-> L[1][2]|
+		left -> reachleft ->L[0][2]|
+		front -> reachfront->L[0][2]|
+		back -> reach[0][1] -> L[0][1]),
+L[1][2]= (right ->reach[2][2]-> L[2][2]|
+		left -> reach[0][2] ->L[0][2]|
+		front -> reachfront->L[1][2]|
+		back -> reach[1][1] -> L[1][1]),
+L[2][2]= (right ->reachright-> L[2][2]|
+		left -> reach[1][2] ->L[1][2]|
+		front -> reachfront->L[2][2]|
+		back -> reach[2][1] -> L[2][1]),
+
+
+
+
+
+
+
+
+
+//FLTLによる要求定義
+//床の清掃に用いるfuentの定義
+//例：fluent TakeOff = <takeoff,land>
+//		→takeoffをしてから、landを行うまでtrue→空を飛んでいる状態でtrueになる
+//	  fluent LOCATION[x:X][y:Y] = <reach[x][y], Monitorable\{reach[x][y]}>
+//		矢印座標(x,y)への到達アクションが検知されたらtrueになる
+//	  fluent Land = <land,takeoff>
+//		→landをしてから、takeoffを行うまでtrue→地面にいる状態でtrueになる
+//
+//
+
+fluent m = <reach[0][0],reach[2][2]>
+fluent c1 = <reach[0][0],reach[2][0]>
+fluent r1 = <reach[2][0],reach[2][1]>
+fluent c2 = <reach[2][1],reach[0][1]>
+fluent r2 = <reach[0][1],reach[0][2]>
+fluent c3 = <reach[0][2],reach[2][2]>
+
+
+
+
+
+
+
+
+//床の清掃に用いるassertの定義
+//→fluentをそのまま入れても良いし、(and(&&),or(||))を用いて複数のfluentの利用も可能
+//例: assert TAKEOFF = TakeOff
+// 	  assert NAVI = LOCATION[1][1]&&Land  
+//
+
+
+
+
+
+
+
+
+
+//床の清掃に用いるsafety goalをFLTLを用いて定義
+//例：
+// fluent Invalid = <out, Controllable\{out}>
+// ltl_property INVALID = [](!Invalid)
+// outというアクションを行ってはいけないという意
+//　論理作用素を用いてゴールを表現する。
+//
+
+ltl_property INVALID = [](c1)
+
+
+
+
+
+
+
+
+//コントローラーの仕様書
+//作ったltl_propetyの名前をsafetyに
+//前提、ゴールを定義したassertの名前をそれぞれassumption, livenessに入れる。
+//例
+//controllerSpec FLOOR_SPECIFICATION = {
+//	safety = {INVALID}
+//	assumption = {TAKEOFF}
+//	liveness = {NAVI}
+//	controllable = {FloorControllable}
+//}
+//controller ||FLOOR_SWEEP = (FLOOR)~{FLOOR_SPECIFICATION}.
+//||SWEEPF = (FLOOR_SWEEP).
+//
+//
+//
+
+controllerSpec FLOOR_SPECIFICATION = {
+	safety = {}
+	assumption = {}
+	liveness = {}
+	controllable = {FloorControllable}
+}
+controller ||FLOOR_SWEEP = (FLOOR)~{FLOOR_SPECIFICATION}.
+||SWEEPF = (FLOOR_SWEEP).

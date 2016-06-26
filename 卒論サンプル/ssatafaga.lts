@@ -1,0 +1,58 @@
+
+const Xmax = 1
+const Ymax = 1
+range X = 0..Xmax
+range Y = 0..Ymax
+
+set Controllable = {takeoff,land, moveright,moveleft,movefront,moveback}
+set Monitorble = {reach[X][Y],out}
+
+START = (takeoff -> L[0][0]),
+L[0][0] = (moveright-> reach[1][0]-> L[1][0]|
+			moveleft-> OUT|
+			movefront-> reach[0][1]-> L[0][1]|
+			moveback-> OUT|
+			land-> START[0][0]),
+L[1][0] = (moveright-> OUT|
+			moveleft-> reach[0][0]-> L[0][0]|
+			movefront-> reach[1][1]-> L[1][1]|
+			moveback-> OUT|
+			land-> START[1][0]),
+L[0][1] = (moveright-> reach[1][1]-> L[1][1]|
+			moveleft-> OUT|
+			movefront-> OUT|
+			moveback-> reach[0][0] -> L[0][0]|
+			land-> START[0][1]),
+L[1][1] = (moveright-> OUT|
+			moveleft-> reach[0][1] -> L[0][1]|
+			movefront-> OUT|
+			moveback-> reach[1][0]-> L[1][0]|
+			land -> START[1][1]),
+START[0][0] = (takeoff -> L[0][0]),
+START[1][0] = (takeoff -> L[1][0]),
+START[0][1] = (takeoff -> L[0][1]),
+START[1][1] = (takeoff -> L[1][1]),
+OUT = (out-> OUT).
+||Env = (START).
+
+
+ltl_property INVALID = [](!OUT)
+
+fluent InAir = <takeoff, land>
+fluent OnLand = <land, takeoff>
+fluent LOCATION[x:X][y:Y] = <reach[x][y], Monitorble\{reach[x][y]}>
+fluent OUT = <out, Controllable>
+
+assert IN_AIR = InAir
+assert ON_LAND = (OnLand)
+assert DESTINATION = LOCATION[1][1]
+
+controllerSpec SPECIFICATION = {
+	safety= {INVALID}
+	assumption= {IN_AIR}
+	liveness = {DESTINATION, ON_LAND}
+	controllable = {Controllable}
+}
+controller ||C = (Env)~{SPECIFICATION}.
+
+

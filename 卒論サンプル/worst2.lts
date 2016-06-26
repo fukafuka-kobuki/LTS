@@ -1,0 +1,191 @@
+const X_MAX = 2
+const Y_MAX = 2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+const X_MAXf = 2
+const Y_MAXf = 2
+range Xf = 0..X_MAXf
+range Yf = 0..Y_MAXf
+
+set FlagAction = {stop[X][Y]}
+set FlagActionf = {stopf[Xf][Yf]}
+
+set Controllable = {enterstair, outstair,moveright, moveleft, up,down}
+set Controllable2 = {enterstair, outstair,floorinit,moverightf, moveleftf, movefront,moveback}
+
+
+fluent OUT = <floorinit, outstair>
+fluent ENTER = <enterstair, outstair>
+//fluent LOCATION[x:X][y:Y]=<{stop[x][y]},{FlagAction}\{stop[x][y]}>
+fluent CLEANACHIEVE[x:X][y:Y]=<stop[x][y],outstair> 
+fluent CLEANACHIEVEF[a:Xf][b:Yf]=<stopf[a][b],floorinit>
+
+assert ENTERS = ENTER
+assert OUTS = OUT
+//assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2])
+
+assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2]&&CLEANACHIEVE[1][2]&&CLEANACHIEVE[2][2]&&CLEANACHIEVE[0][1]&&CLEANACHIEVE[1][1]&&CLEANACHIEVE[2][1]&&CLEANACHIEVE[0][0]&&CLEANACHIEVE[1][0]&&CLEANACHIEVE[2][0]&&CLEANACHIEVEF[0][2]&&CLEANACHIEVEF[1][2]&&CLEANACHIEVEF[2][2]&&CLEANACHIEVEF[0][1]&&CLEANACHIEVEF[1][1]&&CLEANACHIEVEF[2][1]&&CLEANACHIEVEF[0][0]&&CLEANACHIEVEF[1][0]&&CLEANACHIEVEF[2][0])
+
+//assert CLEAN_ACHIEVEF = (CLEANACHIEVEF[1][2])
+
+fluent Down = <{down},{Controllable,reachright,reachleft}\{down}>
+fluent RIGHT = <reachright,{moveleft}>
+fluent LEFT = <reachleft , moveright>
+fluent MoveRight = <moveright, reachright>
+fluent MoveLeft = <moveleft, reachleft>
+fluent CLEAN_RIGHT = <reachright,{down}>
+fluent CLEAN_LEFT = <reachleft , {down}>
+fluent EnterS = <enterstair, {Controllable,reachright,reachleft}\{enterstair}>
+fluent Invalid = <up, Controllable\{up}>
+
+
+//fluent for floor
+fluent Change = <movefront,{Controllable2}\{movefront}>
+fluent RIGHTF = <reachrightf,moveleftf>
+fluent LEFTF = <reachleftf,moverightf>
+fluent MoveRightF = <moverightf, reachrightf>
+fluent MoveLeftF = <moveleftf, reachleftf>
+fluent CLEAN_RIGHTF = <reachrightf,{movefront}>
+fluent CLEAN_LEFTF = <reachleftf,{movefront}>
+fluent EnterF = <floorinit, {Controllable2}\{floorinit}>
+fluent InvalidF = <moveback, {Controllable2}\{moveback}>
+
+
+
+//assertion for stair
+assert ENTER = EnterS
+assert DOWN = Down
+assert DOWNS = (Down||EnterS)
+assert SWEEP_COMPLETE = (CLEAN_RIGHT && CLEAN_LEFT)
+assert SWEEP_RIGHT = CLEAN_RIGHT
+assert SWEEP_LEFT = CLEAN_LEFT
+
+
+//assertion for floor
+
+assert ENTERF = EnterF
+assert MOVE_FRONT = Change
+assert CHANGEF = (Change||EnterF)
+assert SWEEP_COMPLETEF = (CLEAN_RIGHTF && CLEAN_LEFTF)
+assert SWEEP_RIGHTF = CLEAN_RIGHTF
+assert SWEEP_LEFTF = CLEAN_LEFTF
+
+
+
+
+
+
+
+L1 = STAIR,
+STAIR = (enterstair->stop[0][2]->L[0][2]),
+L[0][2] = (
+		moveright->stop[1][2]-> L[1][2]|
+		moveleft->reachleft->L[0][2]|
+		down -> stop[0][1] -> L[0][1]|
+		reachleft->L[0][2]),
+L[1][2] = (
+		moveleft->stop[0][2]-> L[0][2]| 
+		moveright->stop[2][2]-> L[2][2]| 
+		down -> stop[1][1] -> L[1][1]),
+L[2][2] = (
+		moveleft->stop[1][2]-> L[1][2]| 
+		reachright -> L[2][2]|
+		down -> stop[2][1] -> L[2][1]),
+L[0][1] = (
+		moveright->stop[1][1]-> L[1][1]|
+		moveleft->reachleft->L[0][1]|
+		down -> stop[0][0] -> L[0][0]|
+		up -> stop[0][2] -> L[0][2]|
+		reachleft->L[0][1]),
+L[1][1] = (
+		moveleft->stop[0][1]-> L[0][1]| 
+		moveright->stop[2][1]-> L[2][1]| 
+		down -> stop[1][0] -> L[1][0]|
+		up -> stop[1][2] -> L[1][2]),
+L[2][1] = (
+		moveleft->stop[1][1]-> L[1][1]| 
+		moveright ->reachright -> L[2][1]|
+		down -> stop[2][0] -> L[2][0]|
+		up -> stop[2][2] -> L[2][2]),
+L[0][0] = (
+		moveright->stop[1][0]-> L[1][0]|
+		moveleft->reachleft->L[0][0]|
+		up -> stop[0][1] -> L[0][1]|
+		reachleft->L[0][0]),
+L[1][0] = (
+		moveleft->stop[0][0]-> L[0][0]| 
+		moveright->stop[2][0]-> L[2][0]|
+		up -> stop[1][1] -> L[1][1]),
+L[2][0] = (
+		moveleft->stop[1][0]-> L[1][0]| 
+		reachright -> L[2][0]|
+		up -> stop[2][1] -> L[2][1]|
+		outstair -> FLOOR),
+FLOOR = (enterstair -> stop[0][2]-> L[0][2]).
+
+F1 = (enterstair -> Stair| floorinit ->START),
+Stair = (outstair -> floorinit -> START),
+START = (stopf[0][2] -> F[0][2]),
+F[0][2] = (
+		moverightf->stopf[1][2]-> F[1][2]|
+		moveleftf->reachleftf->F[0][2]|
+		movefront -> stopf[0][1] -> F[0][1]|
+		reachleftf->F[0][2]),
+F[1][2] = (
+		moveleftf->stopf[0][2]-> F[0][2]| 
+		moverightf->stopf[2][2]-> F[2][2]| 
+		movefront-> stopf[1][1] -> F[1][1]),
+F[2][2] = (
+		moveleftf->stopf[1][2]-> F[1][2]| 
+		reachrightf -> F[2][2]|
+		movefront -> stopf[2][1] -> F[2][1]),
+F[0][1] = (
+		moverightf->stopf[1][1]-> F[1][1]|
+		moveleftf->reachleftf->F[0][1]|
+		movefront -> stopf[0][0] -> F[0][0]|
+		moveback -> stopf[0][2] -> F[0][2]|
+		reachleftf->F[0][1]),
+F[1][1] = (
+		moveleftf->stopf[0][1]-> F[0][1]| 
+		moverightf->stopf[2][1]-> F[2][1]| 
+		movefront -> stopf[1][0] -> F[1][0]|
+		moveback -> stopf[1][2] -> F[1][2]),
+F[2][1] = (
+		moveleftf->stopf[1][1]-> F[1][1]| 
+		reachrightf -> F[2][1]|
+		movefront -> stopf[2][0] -> F[2][0]|
+		moveback -> stopf[2][2] -> F[2][2]),
+F[0][0] = (
+		moverightf->stopf[1][0]-> F[1][0]|
+		moveleftf->reachleftf->F[0][0]|
+		moveback -> stopf[0][1] -> F[0][1]|
+		reachleftf->F[0][0]),
+F[1][0] = (
+		moveleftf->stopf[0][0]-> F[0][0]| 
+		moverightf->stopf[2][0]-> F[2][0]|
+		moveback -> stopf[1][1] -> F[1][1]),
+F[2][0] = (
+		moveleftf->stopf[1][0]-> F[1][0]| 
+		reachrightf -> F[2][0]|
+		moveback -> stopf[2][1] -> F[2][1]|
+		enterstair -> STAIR).
+
+controllerSpec SPECIFICATION = {
+	safety = {}
+	assumption ={DOWN}
+	liveness = {SWEEP_RIGHT, SWEEP_LEFT}
+	controllable = {Controllable}
+}
+controller ||C = (L1)~{SPECIFICATION}.
+
+
+controllerSpec SPECIFICATION2 = {
+	safety = {}
+	assumption ={MOVE_FRONT}
+	liveness = {SWEEP_RIGHTF,SWEEP_LEFTF}
+	controllable = {Controllable2}
+}
+controller ||C2 = (F1)~{SPECIFICATION2}.
+
+||SWEEP = (C||C2).

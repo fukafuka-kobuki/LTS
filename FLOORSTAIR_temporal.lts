@@ -1,0 +1,132 @@
+//踊り場の幅
+const MaxTime = 4
+range Times = 0..MaxTime-1
+
+//階段の段数
+const StairNum = 1
+range StairRange = 0..StairNum-1
+
+
+set MoveStair = {enterstair}
+//階段清掃アクション
+set ControllableStair = {floorinit,moveright, moveleft, down,MoveStair}
+//踊り場清掃アクション
+set ControllableFloor = {floorinit,changeline,moveleftf,moverightf,MoveStair,count,countlimit}
+//set Actions = {Controllable,achieve,outstair}
+
+
+
+fluent MOVERIGHT = <moveright, achieve>
+fluent MOVELEFT = <moveleft, achieve>
+fluent Down = <down,achieve>
+
+fluent MOVERIGHTF = <moverightf, achievef>
+fluent MOVELEFTF = <moveleftf, achievef>
+fluent CHANGELINE = <changeline,achievef>
+
+fluent ENTERSTAIR = <enterstair,outstair>
+fluent OUTSTAIR = <outstair,enterstair>
+
+
+assert MOVE_RIGHTF = MOVERIGHTF
+assert MOVE_LEFTF = MOVELEFTF
+assert CHANGE_LINE = CHANGELINE
+assert ENTER_STAIR = ENTERSTAIR
+assert OUT_STAIR = OUTSTAIR
+assert MOVE_RIGHT = MOVERIGHT
+assert MOVE_LEFT = MOVELEFT
+assert DOWN = Down
+
+
+//階段の環境記述
+Stair = START,
+START = (enterstair->LEFTSIDE),
+LEFTSIDE = (moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->(counts-> achieve -> RIGHTSIDE|countlimits->outstair ->floorinit ->START)
+),
+RIGHTSIDE =(moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->(counts->achieve-> RIGHTSIDE|countlimits->outstair-> floorinit-> START)
+).
+
+controllerSpec STAIRSWEEP = {
+	safety = {}
+	assumption = {ENTER_STAIR}
+	liveness = {MOVE_RIGHT,MOVE_LEFT,DOWN}
+	controllable = {ControllableStair}
+}
+controller ||STAIRSWEEPCONTROL = (Stair)~{STAIRSWEEP}.
+
+
+
+//踊り場の環境記述
+Begin = (enterstair -> STAIR),
+Floor = (floorinit -> LEFT),
+LEFT = (moverightf ->achievef-> RIGHT
+			|moveleftf ->achievef-> LEFT
+			|changeline ->(count -> achievef -> LEFT| countlimit ->moverightf-> enterstair ->STAIR)
+),
+RIGHT =(moverightf ->achievef-> RIGHT
+			|moveleftf ->achievef-> LEFT
+			|changeline ->(count -> achievef -> RIGHT| countlimit -> enterstair ->STAIR)
+),
+STAIR = (outstair->Floor).
+
+
+controllerSpec FLOORSWEEP = {
+	assumption = {}
+	liveness = {MOVE_RIGHTF,MOVE_LEFTF,CHANGE_LINE}
+	controllable = {ControllableFloor}
+}
+controller ||FLOORSWEEPCONTROL = (Begin)~{FLOORSWEEP}.
+
+
+//階段清掃→踊り場清掃の手順
+INFLOOR = (enterstair->INSTAIR),
+INSTAIR = (outstair-> INFLOOR).
+
+controllerSpec PROCEDURE = {
+	safety = {}
+	assumption ={ENTER_STAIR}
+	liveness = {OUT_STAIR}
+	controllable = {MoveStair}
+}
+controller ||PROCEDURECONTROL = (INFLOOR)~{PROCEDURE}.
+
+
+
+//階段の清掃カウンタ
+COUNTFLOOR = COUNTFLOOR[0],
+COUNTFLOOR[i:Times] = (count -> COUNTFLOOR[i+1]
+                 |enterstair -> COUNTFLOOR),
+COUNTFLOOR[MaxTime] = (countlimit->enterstair ->COUNTFLOOR),
+COUNTFLOOR[MaxTime+1] = ERROR.
+
+//踊り場の清掃カウント
+COUNTSTAIR = COUNTSTAIR[0],
+COUNTSTAIR[i:StairRange] = (counts -> COUNTSTAIR[i+1]
+                 |outstair -> COUNTSTAIR),
+COUNTSTAIR[StairNum] = (countlimits->outstair ->COUNTSTAIR),
+COUNTSTAIR[StairNum+1] = ERROR.
+
+
+//上記すべてのコントローラーを合成
+||SWEEP = (STAIRSWEEPCONTROL||COUNTFLOOR||COUNTSTAIR||FLOORSWEEPCONTROL||PROCEDURECONTROL).
+
+
+
+
+controllerSpec SPECIFICATION1 = {
+	assumption = {}
+//	liveness = {MOVE_RIGHTF,MOVE_LEFTF,CHANGE_LINE}
+	controllable = {ControllableFloor}
+}
+controller ||WHOLE = (SWEEP)~{SPECIFICATION1}.
+
+
+
+
+
+
+

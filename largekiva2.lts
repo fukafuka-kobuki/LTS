@@ -1,0 +1,110 @@
+const MaxX = 10
+const MaxY = 10
+const MaxTime = 10
+
+range X = 0..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+
+set Direction = {e,w,n,s}
+set MoveAction = {move[Direction]}
+set Controllable  = {MoveAction, wait, pick, put, start,end }
+set ArriveAction = {arriveShipping[Y], arriveInduction[Y], arrivePicking[X], arriveReplenish[X]}
+
+//COUNT=COUNT[0],
+//COUNT[i:Times]=(
+//       when(i==MaxTime)arrive[X][Y] -> ERROR
+//        |when(i!=MaxTime)arrive[X][Y]->COUNT[i+1]
+//        | ArriveAction->COUNT
+//).
+
+
+
+START = (start -> arrive[0][0] ->STORAGE[0][0]),
+STORAGE[x:X][y:Y] = (when (x < MaxX) move['e] -> arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0) move['w] -> (detect->STORAGE[x][y]|arrive[x-1][y]-> STORAGE[x-1][y])
+					|when (x == MaxX) move['e] -> (detect->STORAGE[x][y]|arriveShipping[y]->wait-> SHIPPING[y])
+					|when (x == 0) move['w] -> (detect->STORAGE[x][y]|arriveInduction[y]->wait-> INDUCTION[y])
+					|when (y < MaxY) move['s] -> (detect->STORAGE[x][y]|arrive[x][y+1]-> STORAGE[x][y+1])
+					|when (y > 0) move['n] -> (detect->STORAGE[x][y]|arrive[x][y-1]->STORAGE[x][y-1])
+					|when (y == MaxY) move['s] -> (detect->STORAGE[x][y]|arriveReplenish[x]->wait-> REPLENISH[x])
+					|when (y == 0) move['n] -> (detect->STORAGE[x][y]|arrivePicking[x]->wait-> PICKING[x])
+					|pick -> picksucc -> STORAGE[x][y]
+					|put -> putsucc -> STORAGE[x][y]
+					|end ->reset ->start-> STORAGE[x][y]),
+INDUCTION[y:Y]=(move['e] -> (detect->INDUCTION[y]|arrive[0][y]-> STORAGE[0][y])
+				|end ->reset ->start-> INDUCTION[y]),
+PICKING[x:X]=(move['s] ->(detect->PICKING[x]| arrive[x][0]-> STORAGE[x][0])
+				|end ->reset -> start->PICKING[x]),
+SHIPPING[y:Y] = (move['w] -> (detect->SHIPPING[y]|arrive[MaxX][y]-> STORAGE[MaxX][y])
+				|end ->reset -> start->SHIPPING[y]),
+REPLENISH[x:X] = (move['n] -> (detect->REPLENISH[x]|arrive[x][MaxY]-> STORAGE[x][MaxY])
+				|end ->reset ->start-> REPLENISH[x]
+).
+
+//fluent Definition
+//about Arrive
+fluent ArriveStorage[x:X][y:Y] = <arrive[x][y], MoveAction>
+fluent ArriveInduction[y:Y] = <arriveInduction[y], move['e]>
+fluent ArrivePicking[x:X] = <arrivePicking[x], move['s]>
+fluent ArriveShipping[y:Y] = <arriveShipping[y], move['w]>
+fluent ArriveReplenish[x:X] = <arriveReplenish[x], move['n]>
+fluent ArriveStation = <{arriveInduction[Y],arriveShipping[Y],arrivePicking[X], arriveReplenish[X]}, arrive[X][Y]>
+
+fluent ArriveInvalidPicking = <ArriveAction\{arriveShipping[0],arrivePicking[0],arriveInduction[0]}, reset>
+
+
+fluent TaskFlag0 = <arrive[0][0],reset>
+fluent TaskFlag1 = <arriveInduction[0], reset>
+fluent TaskFlag2 = <arrivePicking[0], reset>
+fluent TaskFlag3 = <arriveShipping[0], reset>
+fluent Finish = <end, reset>
+fluent Start = <start, end>
+
+//about pick
+fluent Pick = <pick,put>
+fluent Put = <put,pick>
+
+ltl_property RePICK = []((Pick ->X!pick)) //二重pick
+ltl_property RePUT = []((Put -> X!put))	//二重put 
+ltl_property STATIONALONE = [](ArriveStation -> Pick)//pickせずにstationへ移動
+
+ltl_property First = [](!(ArriveInduction[Y]) W TaskFirst)
+ltl_property Second = [](!ArrivePicking[X] W TaskFlag1)
+ltl_property Third = [](!ArriveShipping[Y] W TaskFlag2)
+ltl_property Fourth = [](!Finish W TaskFlag3)
+
+ltl_property ArriveInvalidStation = []!ArriveReplenish[X]
+
+ltl_property ImidiatePick = [](ArriveStorage[0][0]-> X Pick)
+//ltl_property InvalidMoveW = [](move['e] -> (!X move['w] W (ArriveShipping[Y]||reset)))
+//ltl_property InvalidMoveE = [](move['w] -> (!X move['e] W (ArriveInduction[Y]||reset)))
+//ltl_property InvalidMoveN = [](move['s] -> (!X move['n] W (ArriveReplenish[X]||reset)))
+//ltl_property InvalidMoveS = [](move['n] -> (!X move['s] W (ArrivePicking[X]||reset)))
+
+ltl_property InvalidMoveW = [](move['e] -> (!X move['w] W (ArriveStation)))
+ltl_property InvalidMoveE = [](move['w] -> (!X move['e] W (ArriveStation)))
+ltl_property InvalidMoveN = [](move['s] -> (!X move['n] W (ArriveStation)))
+ltl_property InvalidMoveS = [](move['n] -> (!X move['s] W (ArriveStation)))
+
+ltl_property InvalidPUT = [](!Put)
+ltl_property InvalidArriveStation = [](!ArriveInvalidPicking)
+
+ltl_property InvalidReturn1 = [](TaskFlag1 -> (!X arriveInduction[0] W (reset)))
+ltl_property InvalidReturn2 = [](TaskFlag2 -> (!X arrivePicking[0] W (reset)))
+ltl_property InvalidReturn3 = [](TaskFlag3 -> (!X arriveShipping[0] W (reset)))
+
+
+assert TaskFirst = (TaskFlag0 && Pick)
+
+
+
+ltl_property Goal1 = ([]Start)
+
+
+controllerSpec KIVASPEC = {
+	safety = {ImidiatePick,InvalidPUT,InvalidReturn1,InvalidReturn2,InvalidReturn3, RePICK, RePUT,InvalidMoveW,InvalidMoveE, InvalidMoveS, InvalidMoveN,  STATIONALONE,ArriveInvalidStation, First, Second,Third,Fourth,InvalidArriveStation}
+//	liveness = {Goal1}
+	controllable = {Controllable}
+}
+controller ||KivaCONT = (START)~{KIVASPEC}.

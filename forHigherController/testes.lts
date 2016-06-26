@@ -1,0 +1,94 @@
+const MaxX = 5
+const MaxY = 5
+const MaxTime = 10
+
+const RestX = MaxX + 1
+const RestY = MaxY + 1
+
+const AgentNum = 1
+
+range X = 0..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+range A = 0..AgentNum
+
+
+set Direction = {e,w,n,s}
+set MoveAction0 = {[0].move[Direction]}
+
+set Controllable0  = {MoveAction0, [0].wait, [0].pick, [0].put, start, end}
+
+set MoveAction1 = {[1].move[Direction]}
+set Controllable1  = {MoveAction1, [1].wait, [1].pick, [1].put, start, end}
+
+//set ArriveAction0 = {[0].arriveReplenish[X], [0].arrivePicking[X], [0].arriveShipping[Y], [0].arriveInduction[Y]}
+set Controllable = {Controllable0, Controllable1}
+
+//set ArriveAction = { arriveInduction[Y], arrivePicking[X]}
+
+ENVforUPDATE = (start -> WAITING),
+WAITING = (changeArea -> REMOVING|
+			getRobot -> GETTING),
+REMOVING = (removeRobot -> startNewSpec -> WAITING),
+GETTING = (acceptRobot -> startNewSpec -> WAITING).
+
+
+//START(I = 0) = (start -> INITIAL),
+INITIAL(I = 0) = (when (I == 0) [I].arrive[5][5]->start -> STORAGE[5][5]
+			|when (I ==1) [I].arrive[1][0] ->start-> STORAGE[1][0]),
+STORAGE[x:X][y:Y] = (when (x < MaxX) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
+					|when (x == MaxX) [I].move['e] -> [I].arriveShipping[y]->[I].wait-> SHIPPING[y]
+					|when (x == 0) [I].move['w] -> [I].arriveInduction[y]->[I].wait-> INDUCTION[y]
+					|when (y < MaxY) [I].move['s] -> [I].arrive[x][y+1]-> STORAGE[x][y+1]
+					|when (y > 0) [I].move['n] -> [I].arrive[x][y-1]->STORAGE[x][y-1]
+					|when (y == MaxY) [I].move['s] -> [I].arriveReplenish[x]->[I].wait-> REPLENISH[x]
+					|when (y == 0) [I].move['n] -> [I].arrivePicking[x]->[I].wait-> PICKING[x]
+					|[I].pick -> [I].picksucc -> STORAGE[x][y]
+					|[I].put -> [I].putsucc -> STORAGE[x][y]
+					|end ->reset ->INITIAL
+),
+SHIPPING[y:Y] = ([I].move['w] -> [I].arrive[MaxX][y]-> STORAGE[MaxX][y]
+				|end ->reset -> INITIAL
+),
+REPLENISH[x:X] =([I].move['n] -> [I].arrive[x][MaxY]-> STORAGE[x][MaxY]
+				|end ->reset -> INITIAL
+), 
+INDUCTION[y:Y]=([I].move['e] -> [I].arrive[0][y]-> STORAGE[0][y]
+				|end ->reset -> INITIAL
+),
+PICKING[x:X]=([I].move['s] -> [I].arrive[x][0]-> STORAGE[x][0]
+				|end ->reset -> start->INITIAL
+).
+
+
+||ALL(N = AgentNum)=
+	forall [i: 0..N]
+ 	(INITIAL(i)).
+
+fluent Arrive = <{[0].arrive[0][2],[0].arrive[1][2],[0].arrive[2][1]}, reset>
+fluent ArriveDest = <[0].arrive[0][0], reset>
+
+fluent Finish = <end, reset>
+fluent Start = <start, {end,reset}>
+
+assert StartTask = Start
+assert Goal05 =  Finish
+assert Goal14 = (ArriveDest)
+
+
+ltl_property Invalid = []!Arrive
+
+ltl_property InvalidEnd1 = [](!Finish W Goal14)
+
+
+controllerSpec ALLSPEC = {
+	safety = {
+		Invalid,
+InvalidEnd1
+		}
+	assumption = {StartTask}
+	liveness = {Goal05}
+	controllable = {Controllable}
+}
+controller ||AllManager = (INITIAL(0))~{ALLSPEC}.

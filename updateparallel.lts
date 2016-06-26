@@ -1,0 +1,87 @@
+E2 = Q0,
+Q0	= (start -> Q1),
+Q1	= (waitrobot -> Q1).
+
+
+KivaCONT = Q0,
+	Q0	= (start -> Q20),
+	Q1	= (move.e -> Q51),
+	Q2	= (end -> Q48),
+	Q3	= (detect -> Q25
+		  |arrive[2][0] -> Q49),
+	Q4	= (pick -> Q37),
+	Q5	= (arrive[2][0] -> Q34),
+	Q6	= (move.n -> Q24
+		  |move.e -> Q39),
+	Q7	= (move.e -> Q40),
+	Q8	= (move.e -> Q38
+		  |move.n -> Q43),
+	Q9	= (move.e -> Q40),
+	Q10	= (start -> Q53),
+	Q11	= (move.e -> Q51),
+	Q12	= (move.s -> Q22
+		  |move.e -> Q55),
+	Q13	= (move.w -> Q26),
+	Q14	= (move.w -> Q46),
+	Q15	= (move.n -> Q54),
+	Q16	= (wait -> Q47),
+	Q17	= (arrive[2][1] -> Q15),
+	Q18	= (move.s -> Q3),
+	Q19	= (move.e -> Q5),
+	Q20	= (arrive[1][1] -> Q4),
+	Q21	= (arrive[1][1] -> Q8),
+	Q22	= (arrive[2][1] -> Q7
+		  |detect -> Q12),
+	Q23	= (arrive[2][1] -> Q9
+		  |detect -> Q33),
+	Q24	= (detect -> Q6
+		  |arrive[0][0] -> Q52),
+	Q25	= (move.s -> Q3),
+	Q26	= (detect -> Q13
+		  |arrive[0][1] -> Q14),
+	Q27	= (arrive[3][0] -> Q16
+		  |detect -> Q45),
+	Q28	= (move.n -> Q54),
+	Q29	= (move.e -> Q17
+		  |move.n -> Q43),
+	Q30	= (move.e -> Q17
+		  |move.n -> Q43),
+	Q31	= (wait -> Q2),
+	Q32	= (move.w -> Q26),
+	Q33	= (move.s -> Q23
+		  |move.e -> Q55),
+	Q34	= (move.n -> Q50),
+	Q35	= (wait -> Q11),
+	Q36	= (reset -> Q10),
+	Q37	= (picksucc -> Q32),
+	Q38	= (arrive[2][1] -> Q28),
+	Q39	= (arrive[1][1] -> Q30),
+	Q40	= (detect -> Q7
+		  |arrive[3][1] -> Q31),
+	Q41	= (wait -> Q18),
+	Q42	= (move.e -> Q21
+		  |move.n -> Q24),
+	Q43	= (arrive[1][0] -> Q19
+		  |detect -> Q29),
+	Q44	= (arrive[1][0] -> Q19),
+	Q45	= (move.s -> Q22
+		  |move.e -> Q27),
+	Q46	= (detect -> Q14
+		  |arriveInduction[1] -> Q35),
+	Q47	= (end -> Q36),
+	Q48	= (reset -> Q10),
+	Q49	= (move.s -> Q23
+		  |move.e -> Q27),
+	Q50	= (detect -> Q34
+		  |arrivePicking[2] -> Q41),
+	Q51	= (detect -> Q1
+		  |arrive[0][1] -> Q42),
+	Q52	= (move.e -> Q44),
+	Q53	= (arrive[1][1] -> Q32),
+	Q54	= (detect -> Q15
+		  |arrive[2][0] -> Q34),
+	Q55	= (detect -> Q12
+		  |arrive[3][0] -> Q16).
+
+
+||Updateparallell = (KivaCONT||E2).

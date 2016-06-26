@@ -1,0 +1,49 @@
+const Height_Max =2
+range Height = 0..Height_Max
+//range UP_RANGE = 1..Height_Max
+//range DOWN_RANGE = 0..Height_Max
+
+set Out ={up[Height_Max+1], down[-1]}
+set Change_Height ={up[Height], down[Height]}
+set Controllable = {on,off,moveRight,moveLeft,Change_Height,Out}
+set Actions ={Controllable, end}
+
+L1 = START,
+START = (on->H[0]),
+H[h:Height]=(moveRight -> end-> moveLeft ->H[h]
+	| moveLeft -> end -> moveRight -> H[h]
+	| when (h == 0) off -> START
+	| when (h > 0) down[h-1] -> H[h-1]
+	| when (h < Height_Max) up[h+1] -> H[h+1]
+).
+
+
+fluent ON = <on, off>
+fluent OFF = <off, on>
+fluent HEIGHT[h:Height]=<{up[h],down[h]},Change_Height\{up[h],down[h]}>
+//fluent HEIGHT[h:Height]=<{up[h],down[h]},{up[Height], down[Height]}\{up[h],down[h]}>
+//fluent HEIGHT[h:Height]=<{up[h], down[h]},{up[Height], down[Height]}\{up[h], down[h]}>
+//fluent HEIGHT[0] = <on, Change_Height>
+
+
+fluent OBSERVATE = <moveRight, end>
+fluent INVALID = <{up[0],down[2]}, {Actions}\{up[0],down[2]}>
+
+assert TURN_ON = ON
+assert TURN_OFF = OFF
+assert OBSERVATION = (HEIGHT[2] && OBSERVATE)
+
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(INVALID || OUT)
+//ltl_property INVALID_MOVING= [](!)
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION}
+	assumption ={TURN_ON}
+//	liveness = {TURN_OFF,OBSERVATION}
+//	liveness = {TURN_OFF}
+	liveness = {OBSERVATION}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

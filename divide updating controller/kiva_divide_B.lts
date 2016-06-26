@@ -1,0 +1,174 @@
+const MaxX = 5
+const MaxY = 1
+const MaxTime = 10
+
+const RestX = 2
+const RestY = MaxY + 1
+
+range X = 3..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+
+set Direction = {e,w,n,s}
+set MoveAction = {move[Direction]}
+set Controllable  = {MoveAction, wait, pick, put, start, end, reset, changeArea}
+set ArriveAction = { arrivePicking[X], arriveShipping[Y]}
+
+//COUNT=COUNT[0],
+//COUNT[i:Times]=(
+//       when(i==MaxTime)arrive[X][Y] -> ERROR
+//        |when(i!=MaxTime)arrive[X][Y]->COUNT[i+1]
+//        | ArriveAction->COUNT
+//).
+
+ENVforUPDATE = (start -> WAITING),
+WAITING = (changeArea -> REMOVING|
+			getRobot -> GETTING),
+REMOVING = (removeRobot -> startNewSpec -> WAITING),
+GETTING = (acceptRobot -> startNewSpec -> WAITING)
+.
+
+
+AFTER = (start -> AFTER1),
+AFTER1 = (getRobot -> AFTER1).
+
+START = (start ->startNewSpec -> arrive[3][1] ->STORAGE[3][1]),
+STORAGE[x:X][y:Y] = (when (x < MaxX) move['e] ->(detect -> STORAGE[x][y] | arrive[x+1][y] -> STORAGE[x+1][y])
+					|when (x > 2) move['w] -> (detect->STORAGE[x][y]|arrive[x-1][y]-> STORAGE[x-1][y])
+//					|when (x == MaxX) move['e] -> (detect->STORAGE[x][y]|arriveShipping[y]->wait-> SHIPPING[y])
+					|when (x == MaxX) move['e] -> (detect->STORAGE[x][y]|arriveShipping[y]->wait-> SHIPPING[y])
+//					|when (x == 3) move['w] -> (detect->STORAGE[x][y]|arriveInduction[y]->wait-> INDUCTION[y])
+					|when (y < MaxY) move['s] -> (detect->STORAGE[x][y]|arrive[x][y+1]-> STORAGE[x][y+1])
+					|when (y > 0) move['n] -> (detect->STORAGE[x][y]|arrive[x][y-1]->STORAGE[x][y-1])
+//					|when (y == MaxY) move['s] -> (detect->STORAGE[x][y]|arriveReplenish[x]->wait-> REPLENISH[x])
+					|when (y == MaxY) move['s] -> (detect->STORAGE[x][y]|arrive[x][y+1]->wait-> STPRAGE[x][y+1])
+					|when (y == 0) move['n] -> (detect->STORAGE[x][y]|arrivePicking[x]->wait-> PICKING[x])
+					|pick -> picksucc -> STORAGE[x][y]
+					|put -> putsucc -> STORAGE[x][y]
+					|end ->reset ->start-> STORAGE[x][y]
+//					|getRobot -> STORAGE[x][y]
+),
+STORAGE[RestX][y:Y] = (
+					changeArea -> end ->reset ->START
+//					start-> STORAGE[RestX][y]
+//					|getRobot -> STORAGE[RestX][y]
+),
+STORAGE[x:X][RestY] =(
+					changeArea ->end ->reset ->START
+//					-> STORAGE[x][RestY]
+//					|getRobot -> STORAGE[x][RestY]
+), 
+//INDUCTION[y:Y]=(move['e] -> (detect->INDUCTION[y]|arrive[0][y]-> STORAGE[0][y])
+//				|end ->reset ->start-> INDUCTION[y]
+//					|getRobot -> INDUCTION[y]
+//),
+SHIPPING[y:Y]=(move['w] -> (detect->SHIPPING[y]|arrive[5][y]-> STORAGE[5][y])
+				|end ->reset ->start-> SHIPPING[y]
+//					|getRobot -> SHIPPING[y]
+),
+PICKING[x:X]=(move['s] ->(detect->PICKING[x]| arrive[x][0]-> STORAGE[x][0])
+				|end ->reset -> start->PICKING[x]
+//					|getRobot -> PICKING[x]
+).
+
+
+
+//fluent Definition
+//about Arrive
+fluent ArriveStorage[x:X][y:Y] = <arrive[x][y], MoveAction>
+fluent ArriveShipping[y:Y] = <arriveShipping[y], move['e]>
+fluent ArrivePicking[x:X] = <arrivePicking[x], move['s]>
+//fluent ArriveShipping[y:Y] = <arriveShipping[y], move['w]>
+//fluent ArriveReplenish[x:X] = <arriveReplenish[x], move['n]>
+fluent ArriveStation = <{arriveShipping[Y],arrivePicking[X],arrive[RestX][Y], arrive[X][RestY]}, arrive[X][Y]>
+
+fluent ArriveInvalidPicking = <ArriveAction\{arriveShipping[1]}, reset>
+
+fluent ArriveEastArea = <arrive[RestX][Y],move['w]>
+fluent ArriveSouthArea = <arrive[X][RestY],move['n]>
+
+//variation point
+//目的地設定に関するfluent
+//fluent TaskFlag0 = <arrive[1][1],reset>
+fluent TaskFlag1 = <arriveShipping[1], reset>
+fluent TaskFlag2 = <arrive[4][1], {MoveAction, reset}>
+//fluent TaskFlag3 = <arrive[RestX][Y], reset>
+fluent Finish = <end, reset>
+fluent Start = <start, end>
+
+//about pick
+fluent Pick = <{pick, startNewSpec},put> initially 0
+fluent Put = <put,{pick,reset}>
+
+//requirement always be needed (not change)
+ltl_property RePICK = [](Pick -> X!pick) //二重pick
+ltl_property RePUT = []((Put -> X!put))	//二重put 
+
+//requirement always be needed (maybe change)
+ltl_property STATIONALONE = [](ArriveStation -> Pick)//pickせずにstationへ移動
+
+//駅に着くまでってなってるけど、エリア分割すると四方が駅で囲まれているとは限らない→ArriveStationのfluentを変更
+ltl_property InvalidMoveW = [](move['e] -> (!X move['w] W (ArriveStation || reset)))
+ltl_property InvalidMoveE = [](move['w] -> (!X move['e] W (ArriveStation || reset)))
+ltl_property InvalidMoveN = [](move['s] -> (!X move['n] W (ArriveStation ||reset)))
+ltl_property InvalidMoveS = [](move['n] -> (!X move['s] W (ArriveStation || reset)))
+
+
+//requirement always be needed (changeable)
+//エリア内に訪問しないstationがある場合
+ltl_property ArriveInvalidStorage = []!arrive[X][RestY]
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property ImidiatePick = [](ArriveStorage[1][1]-> X Pick)
+ltl_property ImidiatePut = [](ArriveStorage[1][1]-> X Pick)
+ltl_property InvalidPUT = [](!Put)
+ltl_property InvalidPICK = [](pick -> Pick )
+
+//エリアによって変わる
+ltl_property InvalidReturn1 = [](TaskFlag1 -> (!X arriveShipping[1] W (reset)))
+//ltl_property InvalidReturn2 = [](TaskFlag2 -> (!X arrivePicking[2] W (reset)))
+//ltl_property InvalidReturn3 = [](TaskFlag3 -> (!X arrive[RestX][Y] W (reset)))
+
+ltl_property InvalidArriveStation = [](!ArriveInvalidPicking)
+
+
+ltl_property First = [](!(ArrivePicking[X]))
+ltl_property Second = [](!Put W (TaskFlag1&& TaskFlag2 && Put))
+//ltl_property Third = [](!TaskFlag3 W TaskFlag2)
+ltl_property Fourth = [](!Finish W(TaskFlag2 && Put))
+//ltl_property Fourth = [](!end -> (TaskFlag2 && Put))
+
+
+//ltl_property Goal1 = ([]Start)
+
+assert Goal1 = TaskFlag1
+
+controllerSpec KIVASPEC = {
+	safety = {	
+				RePICK,
+				RePUT,
+//				ImidiatePick,
+//				InvalidPUT,
+				InvalidPICK,
+				InvalidReturn1,
+//				InvalidReturn2,
+//				InvalidReturn3,
+				InvalidMoveW,
+				InvalidMoveE,
+				InvalidMoveS,
+				InvalidMoveN,
+				STATIONALONE,
+				ArriveInvalidStorage,
+				First,
+				Second,
+//				Third,
+				Fourth,
+				InvalidArriveStation
+				}
+//	liveness = {Goal1}
+	controllable = {Controllable}
+}
+controller ||KivaCONT = (START)~{KIVASPEC}.
+
+||UPDATECONTROLLER = (KivaCONT||ENVforUPDATE||AFTER).

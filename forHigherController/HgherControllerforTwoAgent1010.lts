@@ -1,0 +1,299 @@
+const MaxX = 10
+const MaxY = 10
+const MaxTime = 10
+
+const RestX = MaxX + 1
+const RestY = MaxY + 1
+
+const AgentNum = 1
+
+range X = 0..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+range A = 0..AgentNum
+
+
+set Direction = {e,w,n,s}
+set MoveAction0 = {[0].move[Direction]}
+
+set Controllable0  = {MoveAction0, [0].wait, [0].pick, [0].put, start, end}
+
+set MoveAction1 = {[1].move[Direction]}
+set Controllable1  = {MoveAction1, [1].wait, [1].pick, [1].put, start, end}
+
+set ArriveAction = {[A].arrive[X][Y]}
+set Controllable = {Controllable0, Controllable1, ArriveAction}
+
+//set ArriveAction = { arriveInduction[Y], arrivePicking[X]}
+
+//COUNT=COUNT[0],
+//COUNT[i:Times]=(
+//       when(i==MaxTime)arrive[X][Y] -> ERROR
+//        |when(i!=MaxTime)arrive[X][Y]->COUNT[i+1]
+//        | ArriveAction->COUNT
+//).
+
+ENVforUPDATE = (start -> WAITING),
+WAITING = (changeArea -> REMOVING|
+			getRobot -> GETTING),
+REMOVING = (removeRobot -> startNewSpec -> WAITING),
+GETTING = (acceptRobot -> startNewSpec -> WAITING).
+
+
+START(I = 0) = (start -> INITIAL),
+INITIAL = (when (I == 0) [I].arrive[1][1] -> STORAGE[1][1]
+			|when (I ==1) [I].arrive[1][0] -> STORAGE[1][0]),
+STORAGE[x:X][y:Y] = (when (x < MaxX) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
+					|when (x == MaxX) [I].move['e] -> [I].arriveShipping[y]->[I].wait-> SHIPPING[y]
+					|when (x == 0) [I].move['w] -> [I].arriveInduction[y]->[I].wait-> INDUCTION[y]
+					|when (y < MaxY) [I].move['s] -> [I].arrive[x][y+1]-> STORAGE[x][y+1]
+					|when (y > 0) [I].move['n] -> [I].arrive[x][y-1]->STORAGE[x][y-1]
+					|when (y == MaxY) [I].move['s] -> [I].arriveReplenish[x]->[I].wait-> REPLENISH[x]
+					|when (y == 0) [I].move['n] -> [I].arrivePicking[x]->[I].wait-> PICKING[x]
+					|[I].pick -> [I].picksucc -> STORAGE[x][y]
+					|[I].put -> [I].putsucc -> STORAGE[x][y]
+					|end ->reset ->START
+),
+SHIPPING[y:Y] = ([I].move['w] -> [I].arrive[MaxX][y]-> STORAGE[MaxX][y]
+				|end ->reset -> START
+),
+REPLENISH[x:X] =([I].move['n] -> [I].arrive[x][MaxY]-> STORAGE[x][MaxY]
+				|end ->reset -> START
+), 
+INDUCTION[y:Y]=([I].move['e] -> [I].arrive[0][y]-> STORAGE[0][y]
+				|end ->reset -> START
+),
+PICKING[x:X]=([I].move['s] -> [I].arrive[x][0]-> STORAGE[x][0]
+				|end ->reset -> start->START
+).
+
+||ALL(N = AgentNum)=
+	forall [i: 0..N]
+ 	(START(i)).
+   
+
+//fluent Definition
+//about Arrive
+fluent ArriveStorage[a:A][x:X][y:Y] = <[a].arrive[x][y], {[a].move[Direction], reset}>//
+fluent ArriveInduction[a:A][y:Y] = <[a].arriveInduction[y], {[a].move['e],reset}>
+fluent ArrivePicking[a:A][x:X] = <[a].arrivePicking[x], {[a].move['s],reset}>
+fluent ArriveShipping[a:A][y:Y] = <[a].arriveShipping[y], {[a].move['w],reset}>
+fluent ArriveReplenish[a:A][x:X] = <[a].arriveReplenish[x], {[a].move['n],reset}>
+
+
+
+fluent Finish = <end, reset>
+fluent Start = <start, {end,reset}>
+
+//about pick
+fluent Pick[a:A] = <[a].pick,{[a].put,reset}>//
+fluent Put[a:A] = <[a].put,{[a].pick,reset}>//
+
+//requirement always be needed (not change)
+ltl_property RePICK0 = []((Pick[0] ->X! [0].pick)) //二重pick
+ltl_property RePUT0 = []((Put[0] -> X! [0].put))	//二重put 
+
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property ImidiatePick0 = [](ArriveStorage[0][1][1]-> X Pick[0])
+ltl_property InvalidPUT0 = [](!Put[0])
+ltl_property InvalidEnd0 = [](!Finish W Goal04)
+
+assert StartTask = Start
+assert Goal01 = (ArriveStorage[0][1][1] && Pick[0])
+assert Goal02 = (ArriveInduction[0][1])
+assert Goal03 = (ArrivePicking[0][1])
+assert Goal04 = (ArriveShipping[0][1])
+
+controllerSpec KIVASPEC0 = {
+	safety = {	
+				InvalidEnd0 ,
+				RePICK0,
+				RePUT0,
+				InvalidPUT0,
+				}
+	assumption = {StartTask}
+	liveness = {Goal01, Goal02, Goal03, Goal04}
+	controllable = {Controllable0}
+}
+controller ||KivaCONT0 = (START(0))~{KIVASPEC0}.
+
+
+
+//requirement always be needed (not change)
+ltl_property RePICK1 = []((Pick[1] ->X! [1].pick)) //二重pick
+ltl_property RePUT1 = []((Put[1] -> X! [1].put))	//二重put 
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property InvalidPUT1 = [](!Put[1])
+ltl_property InvalidEnd1 = [](!Finish W Goal14)
+
+assert Goal11 = (ArriveStorage[1][1][0] && Pick[1])
+assert Goal12 = (ArriveInduction[1][1])
+assert Goal13 = (ArrivePicking[1][0])
+assert Goal14 = (ArriveShipping[1][1])
+
+
+controllerSpec KIVASPEC1 = {
+	safety = {	
+				InvalidEnd1,
+				RePICK1,
+				RePUT1,
+				InvalidPUT1,
+//				STATIONALONE,
+				}
+	assumption = {StartTask}
+	liveness = {Goal11, Goal12, Goal13,Goal14}
+	controllable = {Controllable1}
+}
+controller ||KivaCONT1 = (START(1))~{KIVASPEC1}.
+
+||ALLCONT = (KivaCONT0 || KivaCONT1).
+
+
+//ltl_property StopConflict =[] forall[x:X][y:Y]!((ArriveStorage[0][x][y] && ArriveStorage[1][x][y]))
+
+ltl_property StopConflict0T0 =[]!((ArriveStorage[0][0][0] && ArriveStorage[1][0][0]))
+ltl_property StopConflict0T1 =[]!((ArriveStorage[0][0][1] && ArriveStorage[1][0][1]))
+ltl_property StopConflict0T2 =[]!((ArriveStorage[0][0][2] && ArriveStorage[1][0][2]))
+ltl_property StopConflict0T3 =[]!((ArriveStorage[0][0][3] && ArriveStorage[1][0][3]))
+ltl_property StopConflict0T4 =[]!((ArriveStorage[0][0][4] && ArriveStorage[1][0][4]))
+ltl_property StopConflict0T5 =[]!((ArriveStorage[0][0][5] && ArriveStorage[1][0][5]))
+ltl_property StopConflict0T6 =[]!((ArriveStorage[0][0][6] && ArriveStorage[1][0][6]))
+ltl_property StopConflict0T7 =[]!((ArriveStorage[0][0][7] && ArriveStorage[1][0][7]))
+ltl_property StopConflict0T8 =[]!((ArriveStorage[0][0][8] && ArriveStorage[1][0][8]))
+ltl_property StopConflict0T9 =[]!((ArriveStorage[0][0][9] && ArriveStorage[1][0][9]))
+ltl_property StopConflict1T0 =[]!((ArriveStorage[0][1][0] && ArriveStorage[1][1][0]))
+ltl_property StopConflict1T1 =[]!((ArriveStorage[0][1][1] && ArriveStorage[1][1][1]))
+ltl_property StopConflict1T2 =[]!((ArriveStorage[0][1][2] && ArriveStorage[1][1][2]))
+ltl_property StopConflict1T3 =[]!((ArriveStorage[0][1][3] && ArriveStorage[1][1][3]))
+ltl_property StopConflict1T4 =[]!((ArriveStorage[0][1][4] && ArriveStorage[1][1][4]))
+ltl_property StopConflict1T5 =[]!((ArriveStorage[0][1][5] && ArriveStorage[1][1][5]))
+ltl_property StopConflict1T6 =[]!((ArriveStorage[0][1][6] && ArriveStorage[1][1][6]))
+ltl_property StopConflict1T7 =[]!((ArriveStorage[0][1][7] && ArriveStorage[1][1][7]))
+ltl_property StopConflict1T8 =[]!((ArriveStorage[0][1][8] && ArriveStorage[1][1][8]))
+ltl_property StopConflict1T9 =[]!((ArriveStorage[0][1][9] && ArriveStorage[1][1][9]))
+ltl_property StopConflict2T0 =[]!((ArriveStorage[0][2][0] && ArriveStorage[1][2][0]))
+ltl_property StopConflict2T1 =[]!((ArriveStorage[0][2][1] && ArriveStorage[1][2][1]))
+ltl_property StopConflict2T2 =[]!((ArriveStorage[0][2][2] && ArriveStorage[1][2][2]))
+ltl_property StopConflict2T3 =[]!((ArriveStorage[0][2][3] && ArriveStorage[1][2][3]))
+ltl_property StopConflict2T4 =[]!((ArriveStorage[0][2][4] && ArriveStorage[1][2][4]))
+ltl_property StopConflict2T5 =[]!((ArriveStorage[0][2][5] && ArriveStorage[1][2][5]))
+ltl_property StopConflict2T6 =[]!((ArriveStorage[0][2][6] && ArriveStorage[1][2][6]))
+ltl_property StopConflict2T7 =[]!((ArriveStorage[0][2][7] && ArriveStorage[1][2][7]))
+ltl_property StopConflict2T8 =[]!((ArriveStorage[0][2][8] && ArriveStorage[1][2][8]))
+ltl_property StopConflict2T9 =[]!((ArriveStorage[0][2][9] && ArriveStorage[1][2][9]))
+ltl_property StopConflict3T0 =[]!((ArriveStorage[0][3][0] && ArriveStorage[1][3][0]))
+ltl_property StopConflict3T1 =[]!((ArriveStorage[0][3][1] && ArriveStorage[1][3][1]))
+ltl_property StopConflict3T2 =[]!((ArriveStorage[0][3][2] && ArriveStorage[1][3][2]))
+ltl_property StopConflict3T3 =[]!((ArriveStorage[0][3][3] && ArriveStorage[1][3][3]))
+ltl_property StopConflict3T4 =[]!((ArriveStorage[0][3][4] && ArriveStorage[1][3][4]))
+ltl_property StopConflict3T5 =[]!((ArriveStorage[0][3][5] && ArriveStorage[1][3][5]))
+ltl_property StopConflict3T6 =[]!((ArriveStorage[0][3][6] && ArriveStorage[1][3][6]))
+ltl_property StopConflict3T7 =[]!((ArriveStorage[0][3][7] && ArriveStorage[1][3][7]))
+ltl_property StopConflict3T8 =[]!((ArriveStorage[0][3][8] && ArriveStorage[1][3][8]))
+ltl_property StopConflict3T9 =[]!((ArriveStorage[0][3][9] && ArriveStorage[1][3][9]))
+ltl_property StopConflict4T0 =[]!((ArriveStorage[0][4][0] && ArriveStorage[1][4][0]))
+ltl_property StopConflict4T1 =[]!((ArriveStorage[0][4][1] && ArriveStorage[1][4][1]))
+ltl_property StopConflict4T2 =[]!((ArriveStorage[0][4][2] && ArriveStorage[1][4][2]))
+ltl_property StopConflict4T3 =[]!((ArriveStorage[0][4][3] && ArriveStorage[1][4][3]))
+ltl_property StopConflict4T4 =[]!((ArriveStorage[0][4][4] && ArriveStorage[1][4][4]))
+ltl_property StopConflict4T5 =[]!((ArriveStorage[0][4][5] && ArriveStorage[1][4][5]))
+ltl_property StopConflict4T6 =[]!((ArriveStorage[0][4][6] && ArriveStorage[1][4][6]))
+ltl_property StopConflict4T7 =[]!((ArriveStorage[0][4][7] && ArriveStorage[1][4][7]))
+ltl_property StopConflict4T8 =[]!((ArriveStorage[0][4][8] && ArriveStorage[1][4][8]))
+ltl_property StopConflict4T9 =[]!((ArriveStorage[0][4][9] && ArriveStorage[1][4][9]))
+ltl_property StopConflict5T0 =[]!((ArriveStorage[0][5][0] && ArriveStorage[1][5][0]))
+ltl_property StopConflict5T1 =[]!((ArriveStorage[0][5][1] && ArriveStorage[1][5][1]))
+ltl_property StopConflict5T2 =[]!((ArriveStorage[0][5][2] && ArriveStorage[1][5][2]))
+ltl_property StopConflict5T3 =[]!((ArriveStorage[0][5][3] && ArriveStorage[1][5][3]))
+ltl_property StopConflict5T4 =[]!((ArriveStorage[0][5][4] && ArriveStorage[1][5][4]))
+ltl_property StopConflict5T5 =[]!((ArriveStorage[0][5][5] && ArriveStorage[1][5][5]))
+ltl_property StopConflict5T6 =[]!((ArriveStorage[0][5][6] && ArriveStorage[1][5][6]))
+ltl_property StopConflict5T7 =[]!((ArriveStorage[0][5][7] && ArriveStorage[1][5][7]))
+ltl_property StopConflict5T8 =[]!((ArriveStorage[0][5][8] && ArriveStorage[1][5][8]))
+ltl_property StopConflict5T9 =[]!((ArriveStorage[0][5][9] && ArriveStorage[1][5][9]))
+ltl_property StopConflict6T0 =[]!((ArriveStorage[0][6][0] && ArriveStorage[1][6][0]))
+ltl_property StopConflict6T1 =[]!((ArriveStorage[0][6][1] && ArriveStorage[1][6][1]))
+ltl_property StopConflict6T2 =[]!((ArriveStorage[0][6][2] && ArriveStorage[1][6][2]))
+ltl_property StopConflict6T3 =[]!((ArriveStorage[0][6][3] && ArriveStorage[1][6][3]))
+ltl_property StopConflict6T4 =[]!((ArriveStorage[0][6][4] && ArriveStorage[1][6][4]))
+ltl_property StopConflict6T5 =[]!((ArriveStorage[0][6][5] && ArriveStorage[1][6][5]))
+ltl_property StopConflict6T6 =[]!((ArriveStorage[0][6][6] && ArriveStorage[1][6][6]))
+ltl_property StopConflict6T7 =[]!((ArriveStorage[0][6][7] && ArriveStorage[1][6][7]))
+ltl_property StopConflict6T8 =[]!((ArriveStorage[0][6][8] && ArriveStorage[1][6][8]))
+ltl_property StopConflict6T9 =[]!((ArriveStorage[0][6][9] && ArriveStorage[1][6][9]))
+ltl_property StopConflict7T0 =[]!((ArriveStorage[0][7][0] && ArriveStorage[1][7][0]))
+ltl_property StopConflict7T1 =[]!((ArriveStorage[0][7][1] && ArriveStorage[1][7][1]))
+ltl_property StopConflict7T2 =[]!((ArriveStorage[0][7][2] && ArriveStorage[1][7][2]))
+ltl_property StopConflict7T3 =[]!((ArriveStorage[0][7][3] && ArriveStorage[1][7][3]))
+ltl_property StopConflict7T4 =[]!((ArriveStorage[0][7][4] && ArriveStorage[1][7][4]))
+ltl_property StopConflict7T5 =[]!((ArriveStorage[0][7][5] && ArriveStorage[1][7][5]))
+ltl_property StopConflict7T6 =[]!((ArriveStorage[0][7][6] && ArriveStorage[1][7][6]))
+ltl_property StopConflict7T7 =[]!((ArriveStorage[0][7][7] && ArriveStorage[1][7][7]))
+ltl_property StopConflict7T8 =[]!((ArriveStorage[0][7][8] && ArriveStorage[1][7][8]))
+ltl_property StopConflict7T9 =[]!((ArriveStorage[0][7][9] && ArriveStorage[1][7][9]))
+ltl_property StopConflict8T0 =[]!((ArriveStorage[0][8][0] && ArriveStorage[1][8][0]))
+ltl_property StopConflict8T1 =[]!((ArriveStorage[0][8][1] && ArriveStorage[1][8][1]))
+ltl_property StopConflict8T2 =[]!((ArriveStorage[0][8][2] && ArriveStorage[1][8][2]))
+ltl_property StopConflict8T3 =[]!((ArriveStorage[0][8][3] && ArriveStorage[1][8][3]))
+ltl_property StopConflict8T4 =[]!((ArriveStorage[0][8][4] && ArriveStorage[1][8][4]))
+ltl_property StopConflict8T5 =[]!((ArriveStorage[0][8][5] && ArriveStorage[1][8][5]))
+ltl_property StopConflict8T6 =[]!((ArriveStorage[0][8][6] && ArriveStorage[1][8][6]))
+ltl_property StopConflict8T7 =[]!((ArriveStorage[0][8][7] && ArriveStorage[1][8][7]))
+ltl_property StopConflict8T8 =[]!((ArriveStorage[0][8][8] && ArriveStorage[1][8][8]))
+ltl_property StopConflict8T9 =[]!((ArriveStorage[0][8][9] && ArriveStorage[1][8][9]))
+ltl_property StopConflict9T0 =[]!((ArriveStorage[0][9][0] && ArriveStorage[1][9][0]))
+ltl_property StopConflict9T1 =[]!((ArriveStorage[0][9][1] && ArriveStorage[1][9][1]))
+ltl_property StopConflict9T2 =[]!((ArriveStorage[0][9][2] && ArriveStorage[1][9][2]))
+ltl_property StopConflict9T3 =[]!((ArriveStorage[0][9][3] && ArriveStorage[1][9][3]))
+ltl_property StopConflict9T4 =[]!((ArriveStorage[0][9][4] && ArriveStorage[1][9][4]))
+ltl_property StopConflict9T5 =[]!((ArriveStorage[0][9][5] && ArriveStorage[1][9][5]))
+ltl_property StopConflict9T6 =[]!((ArriveStorage[0][9][6] && ArriveStorage[1][9][6]))
+ltl_property StopConflict9T7 =[]!((ArriveStorage[0][9][7] && ArriveStorage[1][9][7]))
+ltl_property StopConflict9T8 =[]!((ArriveStorage[0][9][8] && ArriveStorage[1][9][8]))
+ltl_property StopConflict9T9 =[]!((ArriveStorage[0][9][9] && ArriveStorage[1][9][9]))
+
+
+//ltl_property StopConflict =  []!([0].move[Direction] && X [0].arrive[0][0] W )
+
+controllerSpec ALLNaiveSPEC = {
+	safety = {
+				InvalidEnd0 ,
+				RePICK0,
+				RePUT0,
+				InvalidPUT0,
+				InvalidEnd1,
+				RePICK1,
+				RePUT1,
+				InvalidPUT1
+}
+	assumption = {StartTask}
+	liveness = {Goal01,Goal11, Goal02, Goal03,Goal04, Goal12, Goal13,Goal14}
+	controllable = {Controllable}
+}
+controller ||AllNaiveManager = (ALL)~{ALLNaiveSPEC}.
+
+
+controllerSpec ALLSPEC = {
+	safety = {
+StopConflict0T0,StopConflict0T1,StopConflict0T2,StopConflict0T3,StopConflict0T4,StopConflict0T5,StopConflict0T6,StopConflict0T7,StopConflict0T8,StopConflict0T9,
+StopConflict1T0,StopConflict1T1,StopConflict1T2,StopConflict1T3,StopConflict1T4,StopConflict1T5,StopConflict1T6,StopConflict1T7,StopConflict1T8,StopConflict1T9,
+StopConflict2T0,StopConflict2T1,StopConflict2T2,StopConflict2T3,StopConflict2T4,StopConflict2T5,StopConflict2T6,StopConflict2T7,StopConflict2T8,StopConflict2T9,
+StopConflict3T0,StopConflict3T1,StopConflict3T2,StopConflict3T3,StopConflict3T4,StopConflict3T5,StopConflict3T6,StopConflict3T7,StopConflict3T8,StopConflict3T9,
+StopConflict4T0,StopConflict4T1,StopConflict4T2,StopConflict4T3,StopConflict4T4,StopConflict4T5,StopConflict4T6,StopConflict4T7,StopConflict4T8,StopConflict4T9,
+StopConflict5T0,StopConflict5T1,StopConflict5T2,StopConflict5T3,StopConflict5T4,StopConflict5T5,StopConflict5T6,StopConflict5T7,StopConflict5T8,StopConflict5T9,
+StopConflict6T0,StopConflict6T1,StopConflict6T2,StopConflict6T3,StopConflict6T4,StopConflict6T5,StopConflict6T6,StopConflict6T7,StopConflict6T8,StopConflict6T9,
+StopConflict7T0,StopConflict7T1,StopConflict7T2,StopConflict7T3,StopConflict7T4,StopConflict7T5,StopConflict7T6,StopConflict7T7,StopConflict7T8,StopConflict7T9,
+StopConflict8T0,StopConflict8T1,StopConflict8T2,StopConflict8T3,StopConflict8T4,StopConflict8T5,StopConflict8T6,StopConflict8T7,StopConflict8T8,StopConflict8T9,
+StopConflict9T0,StopConflict9T1,StopConflict9T2,StopConflict9T3,StopConflict9T4,StopConflict9T5,StopConflict9T6,StopConflict9T7,StopConflict9T8,StopConflict9T9,
+
+		}
+	controllable = {Controllable}
+}
+controller ||AllManager = (ALLCONT)~{ALLSPEC}.
+
+

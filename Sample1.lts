@@ -1,0 +1,50 @@
+const X_MAX =2
+const Y_MAX =2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+//range Jump_Range = 1..Y_MAX
+//range Down_Range = 0..Y_MAX-1
+
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1]}
+set MoveAction = {move[X][Y], Out}
+set Controllable = {on,off, navigation,MoveAction, Out}
+set Actions ={Controllable, end, out}
+
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+fluent LOCATION[x:X][y:Y]=<{move[x][y]},{MoveAction}\{move[x][y]}>
+fluent NAVIGATION = <navigation, end>
+
+assert TURN_OFF = OFF
+assert TURN_ON = ON
+assert NAVIGATION_GOAL = (LOCATION[2][2]&&NAVIGATION)
+
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT)
+
+L1 = START,
+START = (on->L[0][0]),
+L[x:X][y:Y] =(navigation -> end-> L[x][y]
+	| when (x==0&& y==0) off -> START
+	| when (x > 0) move[x-1][y] -> L[x-1][y]
+	| when (x < X_MAX)move[x+1][y] -> L[x+1][y]
+	| when (x == 0) move[x-1][y] -> OUT_CONTROLL
+	| when (x == X_MAX)move[x+1][y] -> OUT_CONTROLL
+	| when (y > 0) move[x][y-1] -> L[x][y-1]
+	| when (y < Y_MAX)move[x][y+1] -> L[x][y+1]
+	| when (y == 0) move[x][y-1] -> OUT_CONTROLL
+	| when (y == Y_MAX)move[x][y+1] -> OUT_CONTROLL
+),
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION}
+	assumption ={TURN_ON}
+	liveness = {NAVIGATION_GOAL,TURN_OFF}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

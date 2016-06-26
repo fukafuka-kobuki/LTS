@@ -1,0 +1,27 @@
+L0 = (takeoff -> L0| land -> L0| moveUp -> L2| moveRight -> L1), 				 
+L1 = (sweep1 -> L1| moveUp -> L3| moveLeft -> L0 ),
+L2 = (sweep2 -> L2| moveDown -> L0| moveRight -> L3),
+L3 = (sweep3 -> L3| moveLeft -> L2| moveDown -> L1).
+||Env = (L0).
+
+
+
+set InvalidAction = {sweep1, sweep2}
+set ControllableAction = {takeoff, land, moveUp, moveRight, moveLeft, moveDown, sweep3}
+set AllAction = {InvalidAction, ControllableAction}
+
+fluent Goal = <sweep3, ControllableAction\{sweep3}>
+fluent INVALID_ACTION = <InvalidAction,ControllableAction>
+
+assert GOAL = Goal
+
+ltl_property PREVENT =[]!INVALID_ACTION
+
+controllerSpec SPECIFICATION = {
+	safety = {PREVENT}
+//	assumption ={ASSUMPTION}
+	liveness = {GOAL}
+	controllable = {ControllableAction}
+}
+
+controller ||C = (L0)~{SPECIFICATION}.

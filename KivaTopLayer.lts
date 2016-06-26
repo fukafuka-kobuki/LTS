@@ -1,0 +1,33 @@
+
+const AgentNum = 60
+range Agent = 0..AgentNum
+
+set Area = {a,b,c,d,e,f}
+set Controllable1 = {[1].changeArea[Area]}
+
+//environment model
+
+TOP(I=1) = (start -> START),
+START = ([I].arriveArea['a] ->AREA['a][I]),
+AREA[ar:Area][a:Agent] = (
+	[I].changeArea[ardest:Area] -> [I].arriveArea[ardest]-> AREA[ardest][I]
+	|end -> START
+).
+
+||ALL(N = AgentNum)=
+	forall [i: 1..N]
+ 	(TOP(i)).
+   
+
+fluent Dest[ar:Area][a:Agent] = <[a].changeArea[ar],{Controllable1}\{[a].changeArea[ar]}>
+
+assert DestinationArea = Dest['a][1]
+
+controllerSpec KIVASYSTEM = {
+	safety = {}
+	liveness = {DestinationArea}
+	controllable = {Controllable1}
+}
+controller ||A1 = (TOP(1))~{KIVASYSTEM}.
+
+

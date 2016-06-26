@@ -1,0 +1,41 @@
+const Area = 1
+range A = 0..Area
+
+
+
+set Controllable = {[A].removeRobot, [A].acceptRobot, startNewSpec, [A].getRobot}
+//set Monitorable = {}
+
+MANAGER (AN = 0)= (start -> BeforeChange),
+BeforeChange = ([AN].changeArea -> [AN].removeRobot ->Changing
+				|[AN].getRobot -> [AN].acceptRobot -> Changing),
+Changing = (startNewSpec -> endUpdate ->BeforeChange).
+
+||ALL(N = Area)=
+	forall [i: 0..N]
+ 	(MANAGER(i)).
+
+
+fluent AToB = <[0].changeArea, endUpdate>
+fluent BToA = <[1].changeArea, endUpdate>
+
+fluent GetBToA = <[0].getRobot, endUpdate>
+fluent GetAToB = <[1].getRobot, endUpdate>
+
+
+fluent REMOVE0 = <[0].removeRobot , endUpdate>
+fluent REMOVE1 = <[1].removeRobot , endUpdate>
+
+fluent ACCEPT0 = <[0].acceptRobot , endUpdate>
+fluent ACCEPT1 = <[1].acceptRobot , endUpdate>
+
+
+ltl_property INVALIDCHANGE1 = [](AToB -> !GetBToA) 
+ltl_property INVALIDCHANGE2 = [](BToA -> !GetAToB) 
+ltl_property INVALIDGET = [](![A].getRobot W (AToB || BToA))
+
+controllerSpec MANAGERSPEC = {
+	safety = {INVALIDCHANGE1,INVALIDCHANGE2, INVALIDGET}
+	controllable = {Controllable}
+}
+controller ||KivaCONT = (ALL)~{MANAGERSPEC}.

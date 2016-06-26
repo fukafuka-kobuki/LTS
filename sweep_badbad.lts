@@ -1,0 +1,316 @@
+
+const MaxTime = 10
+range Times = 0..MaxTime-1
+
+set MoveStair = {enterstair,achievef}
+set Controllable = {moveright, moveleft, down,MoveStair}
+set CountAction = {count}
+set MoveactionS = {moveright,moveleft, down}
+//set Controllable1 = {floorinit,changeline,moveleftf,moverightf,MoveStair}
+set Actions = {Controllable,achieve,outstair}
+set StairControllable = {enterstair,outstair, MoveactionS,down}
+
+
+fluent MOVERIGHT = <moveright, achieve>
+fluent MOVELEFT = <moveleft, achieve>
+
+
+fluent CHANGELINE = <changeline,achievef>
+fluent MOVERIGHTF = <moverightf, achievef>
+fluent MOVELEFTF = <moveleftf, achievef>
+
+fluent ENTERSTAIR = <enterstair,outstair>
+fluent OUTSTAIR = <outstair,enterstair>
+
+fluent FLOORINIT = <floorinit, enterstair>
+
+//assert MOVE_RIGHTF = MOVERIGHTF
+//assert MOVE_LEFTF = MOVELEFTF
+//assert CHANGE_LINE = CHANGELINE
+
+//assert FLOOR_INIT = FLOORINIT
+//assert ENTER_STAIR = ENTERSTAIR
+//assert OUT_STAIR = OUTSTAIR
+//assert MOVE_RIGHT = MOVERIGHT
+//assert MOVE_LEFT = MOVELEFT
+//assert DOWN = Down
+
+
+
+//fluent for stair
+fluent Down = <down,{StairControllable}\{down}>
+fluent RIGHT = <reachright,reachleft>
+fluent LEFT = <reachleft , down>
+fluent CLEAN_RIGHT = <reachright,{down}>
+fluent CLEAN_LEFT = <reachleft , {down}>
+fluent EnterS = <enterstair, {StairControllable}\{enterstair}>
+//assertion for stair
+assert ENTER = EnterS
+assert DOWN = Down
+assert DOWNS = (Down||EnterS)
+assert SWEEP_COMPLETE = (CLEAN_RIGHT && CLEAN_LEFT)
+assert SWEEP_RIGHT = CLEAN_RIGHT
+assert SWEEP_LEFT = CLEAN_LEFT
+
+//ltl_property ChangeStair = [](!DOWN U SWEEP_COMPLETE) 
+ltl_property DuplicateDown = [](DOWNS -> X !DOWNS)
+ltl_property INVALID = []((!DOWN) U SWEEP_COMPLETE)
+ltl_property CLEAN = [](RIGHT ->X !DOWN)
+ltl_property ChangeStair = [](SWEEP_COMPLETE -> X DOWN)
+
+
+
+STAIR = (enterstair -> LEFTSIDE),
+LEFTSIDE = (moveright-> MOVERIGHT|
+			down ->(reachdown->LEFTSIDE|outstair ->STAIR)),
+MOVERIGHT = (moveright-> MOVERIGHT|
+			reachright -> RIGHTSIDE),
+RIGHTSIDE = (moveleft -> MOVELEFT|
+			down -> (reachdown ->RIGHTSIDE| outstair->STAIR)),
+MOVELEFT = (moveleft -> MOVELEFT|
+			reachleft -> LEFTSIDE).
+
+
+controllerSpec SPECIFICATION = {
+	safety = {DuplicateDown,CLEAN,ChangeStair}
+	assumption = {DOWNS}
+	liveness = {SWEEP_RIGHT,SWEEP_LEFT}
+	controllable = {StairControllable}
+}
+controller ||StairSweep = (STAIR)~{SPECIFICATION}.
+
+
+
+
+set FloorControllable = {enterstair,outstair,floorinit,moverightf, moveleftf, changeline,count,countlimit}
+
+
+
+
+
+fluent Right = <reachrightf, changeline>
+fluent Left  = <reachleftf, changeline>
+fluent Change = <changeline, FloorControllable\{changeline}>
+assert RIGHT = Right
+assert LEFT = Left
+assert CHANGE = Change
+
+fluent Right2 = <reachrightf, FloorControllable\{changeline}>
+fluent Left2  = <reachleftf, FloorControllable\{changeline}>
+assert RIGHT2 = Right2
+assert LEFT2 = Left2
+
+
+Floor = (enterstair ->Stair|floorinit->L[0][10]),
+START = (stop[0][10] -> L[0][10]),
+L[0][10] = (
+		moverightf-> L[1][10]| 
+		changeline->count-> L[0][9]| 
+		reachleftf -> L[0][10]),
+L[1][10] = (
+		moveleftf-> L[0][10]| 
+		moverightf-> L[2][10]),
+L[2][10] = (
+		moveleftf-> L[1][10]| 
+		moverightf-> L[3][10]),
+L[3][10] = (
+		moveleftf-> L[2][10]| 
+		changeline->count -> L[3][9]| 
+		reachrightf -> L[3][10]),
+L[0][9] = (
+		moverightf-> L[1][9]| 
+		changeline->count-> L[0][8]| 
+		reachleftf -> L[0][9]),
+L[1][9] = (
+		moveleftf-> L[0][9]| 
+		moverightf-> L[2][9]),
+L[2][9] = (
+		moveleftf-> L[1][9]| 
+		moverightf-> L[3][9]),
+L[3][9] = (
+		moveleftf-> L[2][9]| 
+		changeline->count -> L[3][8]| 
+		reachrightf -> L[3][9]),
+L[0][8] = (
+		moverightf-> L[1][8]| 
+		changeline->count-> L[0][7]| 
+		reachleftf -> L[0][8]),
+L[1][8] = (
+		moveleftf-> L[0][8]| 
+		moverightf-> L[2][8]),
+L[2][8] = (
+		moveleftf-> L[1][8]| 
+		moverightf-> L[3][8]),
+L[3][8] = (
+		moveleftf-> L[2][8]| 
+		changeline->count -> L[3][7]| 
+		reachrightf -> L[3][8]),
+L[0][7] = (
+		moverightf-> L[1][7]| 
+		changeline->count-> L[0][6]| 
+		reachleftf -> L[0][7]),
+L[1][7] = (
+		moveleftf-> L[0][7]| 
+		moverightf-> L[2][7]),
+L[2][7] = (
+		moveleftf-> L[1][7]| 
+		moverightf-> L[3][7]),
+L[3][7] = (
+		moveleftf-> L[2][7]| 
+		changeline->count -> L[3][6]| 
+		reachrightf -> L[3][7]),
+L[0][6] = (
+		moverightf-> L[1][6]| 
+		changeline->count-> L[0][5]| 
+		reachleftf -> L[0][6]),
+L[1][6] = (
+		moveleftf-> L[0][6]| 
+		moverightf-> L[2][6]),
+L[2][6] = (
+		moveleftf-> L[1][6]| 
+		moverightf-> L[3][6]),
+L[3][6] = (
+		moveleftf-> L[2][6]| 
+		changeline->count -> L[3][5]| 
+		reachrightf -> L[3][6]),
+L[0][5] = (
+		moverightf-> L[1][5]| 
+		changeline->count-> L[0][4]| 
+		reachleftf -> L[0][5]),
+L[1][5] = (
+		moveleftf-> L[0][5]| 
+		moverightf-> L[2][5]),
+L[2][5] = (
+		moveleftf-> L[1][5]| 
+		moverightf-> L[3][5]),
+L[3][5] = (
+		moveleftf-> L[2][5]| 
+		changeline->count -> L[3][4]| 
+		reachrightf -> L[3][5]),
+L[0][4] = (
+		moverightf-> L[1][4]| 
+		changeline->count-> L[0][3]| 
+		reachleftf -> L[0][4]),
+L[1][4] = (
+		moveleftf-> L[0][4]| 
+		moverightf-> L[2][4]),
+L[2][4] = (
+		moveleftf-> L[1][4]| 
+		moverightf-> L[3][4]),
+L[3][4] = (
+		moveleftf-> L[2][4]| 
+		changeline->count -> L[3][3]| 
+		reachrightf -> L[3][4]),
+L[0][3] = (
+		moverightf-> L[1][3]| 
+		changeline->count-> L[0][2]| 
+		reachleftf -> L[0][3]),
+L[1][3] = (
+		moveleftf-> L[0][3]| 
+		moverightf-> L[2][3]),
+L[2][3] = (
+		moveleftf-> L[1][3]| 
+		moverightf-> L[3][3]),
+L[3][3] = (
+		moveleftf-> L[2][3]| 
+		changeline->count -> L[3][2]| 
+		reachrightf -> L[3][3]),
+L[0][2] = (
+		moverightf-> L[1][2]| 
+		changeline->count-> L[0][1]| 
+		reachleftf -> L[0][2]),
+L[1][2] = (
+		moveleftf-> L[0][2]| 
+		moverightf-> L[2][2]),
+L[2][2] = (
+		moveleftf-> L[1][2]| 
+		moverightf-> L[3][2]),
+L[3][2] = (
+		moveleftf-> L[2][2]| 
+		changeline->count -> L[3][1]| 
+		reachrightf -> L[3][2]),
+L[0][1] = (
+		changeline-> L[0][2]| 
+		moverightf-> L[1][1]| 
+		reachleftf -> L[0][1]|
+		countlimit ->enterstair -> Stair),
+L[1][1] = (
+		moveleftf-> L[0][1]| 
+		moverightf-> L[2][1]),
+L[2][1] = (
+		moveleftf-> L[1][1]| 
+		moverightf-> L[3][1]),
+L[3][1] = (
+		moveleftf-> L[2][1]| 
+		changeline->count-> L[3][2]| 
+		reachrightf -> L[3][1]),
+Stair = (outstair -> floorinit ->L[0][10]).
+
+
+
+
+
+
+INFLOOR = (enterstair->INSTAIR),
+INSTAIR = (outstair -> floorinit -> INFLOOR).
+
+fluent MoveR = <moverightf, reachrightf>
+fluent MoveL = <moveleftf, reachleftf>
+
+
+
+//—x‚èê‚Ì´‘|ƒJƒEƒ“ƒ^
+COUNTFLOOR = COUNTFLOOR[0],
+COUNTFLOOR[i:Times] = (count -> COUNTFLOOR[i+1]|
+                 	enterstair -> COUNTFLOOR),
+COUNTFLOOR[MaxTime] = (countlimit->enterstair ->COUNTFLOOR),
+COUNTFLOOR[MaxTime+1] = ERROR.
+
+
+
+
+fluent Right3 = <reachrightf, changeline>
+fluent Left3  = <reachleftf, changeline>
+fluent Change3 = <changeline, FloorControllable\{changeline}>
+assert RIGHT3 = Right3
+assert LEFT3 = Left3
+assert CHANGE3 = Change3
+
+fluent Right4 = <reachrightf, FloorControllable\{changeline}>
+fluent Left4  = <reachleftf, FloorControllable\{changeline}>
+assert RIGHT4 = Right4
+assert LEFT4 = Left4
+
+ltl_property Cont_right = []((MoveR -> !MoveL)W RIGHT3)
+ltl_property Cont_left = []((MoveL -> !MoveR)W LEFT3)
+ltl_property DuplicateReachR = [](RIGHT2 -> X !RIGHT2)
+ltl_property DuplicateReachL = [](LEFT2-> X !LEFT2)
+ltl_property CHANGECONSTRAINT = [](!CHANGE)
+
+
+
+controllerSpec SPECIFICATION1 = {
+	safety = {Cont_right,Cont_left}
+//	safety = {Cont_right,Cont_left,DuplicateReachR,DuplicateReachL}
+	assumption ={CHANGE}
+	liveness = {RIGHT3,LEFT3}
+	controllable = {FloorControllable}
+}
+controller ||FloorS = (Floor)~{SPECIFICATION1}.
+
+||FloorSweep = (FloorS || COUNTFLOOR).
+
+||SWEEP = (FloorSweep||StairSweep ).
+
+
+controllerSpec SPECIFICATION2 = {
+	safety = {}
+	assumption ={ENTER_STAIR}
+	liveness = {OUT_STAIR}
+	controllable = {MoveStair}
+}
+controller ||Whole = (SWEEP)~{SPECIFICATION2}.
+
+
+
+

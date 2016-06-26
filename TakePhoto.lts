@@ -1,0 +1,20 @@
+L1 = (takephoto -> end -> L1).
+
+
+set Controllable = {takephoto}
+set AllAction = {Controllable, end}
+
+fluent Goal = <end, AllAction\{end}>
+
+
+assert GOAL = Goal
+
+
+controllerSpec SPECIFICATION = {
+//	safety = {PREVENT,GOAL_ASSIST1,GOAL_ASSIST2,GOAL_ASSIST3}
+//	assumption ={ASSUMPTION}
+	liveness = {GOAL}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

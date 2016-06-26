@@ -1,0 +1,52 @@
+const X_MAX =2
+const Y_MAX =2
+const Z_Max = 2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+range Z = 0..Z_Max
+
+
+set Out ={move[X_MAX+1][Y][Z], move[X][Y_MAX+1][Z], move[X][Y][Z_MAX+1], move[-1][Y][Z], move[X][-1][Z], move[X][Y][-1]}
+set MoveAction = {move[X][Y][Z], Out}
+set ChangeHeight = {up, down, land}
+set Controllable = {on,off,takephoto,MoveAction, ChangeHeight, Out}
+set Actions ={Controllable, end, out}
+
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+fluent LOCATION[x:X][y:Y][z:Z]=<{move[x][y][z]},{MoveAction}\{move[x][y][z]}>
+fluent TAKEPHOTO = <takephoto, end>
+
+assert TURN_OFF = OFF
+assert TURN_ON = ON
+assert TAKE_PHOTO = (LOCATION[2][2][2]&&TAKEPHOTO)
+
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT)
+
+L1 = START,
+START = (on->L[0][0]),
+L[x:X][y:Y][z:Z] =(takephoto -> end-> L[x][y][z]
+	| hover -> L[x][y][z]
+	| when (x==0&& y==0 && z == 0) off -> START
+	| when (x > 0) move[x-1][y][z] -> L[x-1][y][z]
+	| when (x < X_MAX)move[x+1][y] -> L[x+1][y][z]
+	| when (x == 0) move[x-1][y][z] -> OUT_CONTROLL
+	| when (x == X_MAX)move[x+1][y][z] -> OUT_CONTROLL
+	| when (y > 0) move[x][y-1][z] -> L[x][y-1][z]
+	| when (y < Y_MAX)move[x][y+1][z] -> L[x][y+1][z]
+	| when (y == 0) move[x][y-1][z] -> OUT_CONTROLL
+	| when (y == Y_MAX)move[x][y+1][z] -> OUT_CONTROLL
+),
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION}
+	assumption ={TURN_ON}
+	liveness = {TAKE_PHOTO,TURN_OFF}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

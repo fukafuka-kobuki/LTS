@@ -1,0 +1,29 @@
+
+S1 = (c1 -> S4 |c2 -> S3 |c3 -> S2|c4 -> S6),
+S2 = (c3 -> S7 | l -> S2),
+S3 = ( a -> S3),
+S4 = ( a -> S5),
+S5 = (g1 -> S4 |g2 -> S4),
+S6 = ( w -> S6),
+S7 = ( a -> S2).
+||Env = (S1).
+
+
+
+set Assumption = {a}
+set GoalAction = {g1,g2}
+set Action = {c1, c2, c3, c4}
+set BadAction = {w}
+set ElseAction = {l}
+set AllAction = {a,g1,g2,c1,c2,c3,c4,l,w}
+
+ltl_property PREVENT = []!(BadAction)
+
+
+controllerSpec SPECIFICATION = {
+	safety = {PREVENT}
+	assumption ={Assumption}
+	controllable = {Action}
+}
+
+controller ||C = (S1)~{SPECIFICATION}.

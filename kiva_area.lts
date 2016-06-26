@@ -1,0 +1,47 @@
+
+set Direction = {e,w,s,n}
+set Controllable = {move[Direction], end}
+
+
+AREA = (start ->arriveArea[0][0]-> AREA[0][0]),
+AREA[0][0] = (
+	move['s] -> arriveArea[0][1]-> AREA[0][1]
+	|move['e] -> arriveArea[1][0]-> AREA[1][0]
+	|end ->reset -> AREA),
+AREA[0][1] = (
+	move['n] -> arriveArea[0][0]-> AREA[0][0]
+	|move['e] -> arriveArea[1][1]-> AREA[1][1]
+	|end ->reset -> AREA),
+AREA[1][0] = (
+	move['s] -> arriveArea[1][1]-> AREA[1][1]
+	|move['w] -> arriveArea[0][0]-> AREA[0][0]
+	|end ->reset -> AREA),
+AREA[1][1] = (
+	move['w] -> arriveArea[0][1]-> AREA[0][1]
+	|move['n] -> arriveArea[1][0]-> AREA[1][0]
+	|end ->reset -> AREA
+).
+
+fluent Dest1 = <arriveArea[0][0], reset>
+fluent Dest2 = <arriveArea[1][0], reset>
+fluent Dest3 = <arriveArea[1][1], reset>
+fluent Dest4 = <arriveArea[0][1], reset>
+fluent EndTask = <end,reset>
+
+
+ltl_property About_visit1 = [](!Dest2 W Dest1)
+ltl_property About_visit2 = [](!Dest3 W Dest2)
+ltl_property About_visit3 = [](!Dest4)
+ltl_property About_finish = [](!EndTask W Dest3)
+
+assert Finish = EndTask
+
+controllerSpec AREATRANSIT = {
+	safety = {	About_visit1,
+				About_visit2,
+				About_visit3,
+				About_finish}
+	liveness = {Finish}
+	controllable = {Controllable}
+}
+controller ||AreaManager = (AREA)~{AREATRANSIT}.

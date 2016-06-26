@@ -1,0 +1,170 @@
+const MaxX = 5
+const MaxY = 1
+const MaxTime = 10
+const A = 2
+
+const RestX = MaxX + 1
+const RestY = MaxY + 1
+
+range X = 3..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+
+set Direction = {e,w,n,s}
+set MoveAction = {[A].move[Direction]}
+set Controllable  = {MoveAction, wait, [A].pick, [A].put, start, end}
+set ArriveAction = { [A].arriveShipping[Y], [A].arrivePicking[X]}
+
+//COUNT=COUNT[0],
+//COUNT[i:Times]=(
+//       when(i==MaxTime)[A].arrive[X][Y] -> ERROR
+//        |when(i!=MaxTime)[A].arrive[X][Y]->COUNT[i+1]
+//        | ArriveAction->COUNT
+//).
+
+
+ROBOT = (start -> RUNNING),
+RUNNING = (move[Direction] -> RUNNING|
+			pick ->  RUNNING|
+			[A].put -> RUNNING|
+			wait -> RUNNING|
+			end -> ROBOT
+).
+
+
+MAP2 = (start -> [A].arrive[5][1] ->STORAGE[5][1]),
+STORAGE[x:X][y:Y] = (when (x < MaxX) [A].move['e] -> [A].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0) [A].move['w] -> ([A].detect->STORAGE[x][y]|[A].arrive[x-1][y]-> STORAGE[x-1][y])
+					|when (x == MaxX) [A].move['e] -> ([A].detect->STORAGE[x][y]|[A].arriveShipping[y]->wait-> SHIPPING[y])
+//					|when (x == MaxX) [A].move['e] -> ([A].detect->STORAGE[x][y]|[A].arrive[x+1][y]->wait-> STORAGE[x+1][y])
+//					|when (x == 0) [A].move['w] -> ([A].detect->STORAGE[x][y]|[A].arriveInduction[y]->wait-> INDUCTION[y])
+					|when (x == 0) [A].move['w] -> ([A].detect->STORAGE[x][y]|[A].arriveInduction[y]->wait-> STORAGE[x-1][y])
+					|when (y < MaxY) [A].move['s] -> ([A].detect->STORAGE[x][y]|[A].arrive[x][y+1]-> STORAGE[x][y+1])
+					|when (y > 0) [A].move['n] -> ([A].detect->STORAGE[x][y]|[A].arrive[x][y-1]->STORAGE[x][y-1])
+//					|when (y == MaxY) [A].move['s] -> ([A].detect->STORAGE[x][y]|[A].arriveReplenish[x]->wait-> REPLENISH[x])
+					|when (y == MaxY) [A].move['s] -> ([A].detect->STORAGE[x][y]|[A].arrive[x][y+1]->wait-> STORAGE[x][y+1])
+					|when (y == 0) [A].move['n] -> ([A].detect->STORAGE[x][y]|[A].arrivePicking[x]->wait-> PICKING[x])
+					|[A].pick -> [A].picksucc -> STORAGE[x][y]
+					|[A].put -> [A].putsucc -> STORAGE[x][y]
+					|end ->reset ->start-> STORAGE[x][y]),
+STORAGE[2][y:Y] = (
+					end ->reset ->MAP
+//					start-> STORAGE[RestX][y]
+),
+STORAGE[x:X][RestY] =(
+					end ->reset ->MAP
+//					-> STORAGE[x][RestY]
+), 
+INDUCTION[y:Y]=([A].move['e] -> ([A].detect->INDUCTION[y]|[A].arrive[0][y]-> STORAGE[0][y])
+				|end ->reset ->start-> INDUCTION[y]),
+PICKING[x:X]=([A].move['s] ->([A].detect->PICKING[x]| [A].arrive[x][0]-> STORAGE[x][0])
+				|end ->reset -> start->PICKING[x]).
+//SHIPPING[y:Y] = ([A].move['w] -> ([A].detect->SHIPPING[y]|[A].arrive[MaxX][y]-> STORAGE[MaxX][y])
+//				|end ->reset -> start->SHIPPING[y]),
+//REPLENISH[x:X] = ([A].move['n] -> ([A].detect->REPLENISH[x]|[A].arrive[x][MaxY]-> STORAGE[x][MaxY])
+//				|end ->reset ->start-> REPLENISH[x]
+//).
+
+
+//fluent Definition
+//about Arrive
+fluent ArriveStorage[x:X][y:Y] = <[A].arrive[x][y], MoveAction>
+fluent ArriveInduction[y:Y] = <[A].arriveInduction[y], [A].move['e]>
+fluent ArrivePicking[x:X] = <[A].arrivePicking[x], [A].move['s]>
+//fluent ArriveShipping[y:Y] = <[A].arriveShipping[y], [A].move['w]>
+//fluent ArriveReplenish[x:X] = <[A].arriveReplenish[x], [A].move['n]>
+fluent ArriveStation = <{[A].arriveInduction[Y],[A].arrivePicking[X],[A].arrive[RestX][Y], [A].arrive[X][RestY]}, [A].arrive[X][Y]>
+
+fluent ArriveInvalidPicking = <ArriveAction\{[A].arrivePicking[A],[A].arriveInduction[1]}, reset>
+
+fluent ArriveEastArea = <[A].arrive[RestX][Y],[A].move['w]>
+fluent ArriveSouthArea = <[A].arrive[X][RestY],[A].move['n]>
+
+//variation point
+//目的地設定に関するfluent
+fluent TaskFlag0 = <[A].arrive[3][1],reset>
+fluent TaskFlag1 = <[A].arriveInduction[1], reset>
+fluent TaskFlag2 = <[A].arrivePicking[2], reset>
+fluent TaskFlag3 = <[A].arrive[RestX][Y], reset>
+fluent Finish = <end, reset>
+fluent Start = <start, end>
+
+//about pick
+fluent Pick = <[A].pick,[A].put>
+fluent Put = <[A].put,[A].pick>
+
+//requirement always be needed (not change)
+ltl_property RePICK = []((Pick ->X!pick)) //二重pick
+ltl_property RePUT = []((Put -> X![A].put))	//二重put 
+
+//requirement always be needed (maybe change)
+ltl_property STATIONALONE = [](ArriveStation -> Pick)//pickせずにstationへ移動
+
+//駅に着くまでってなってるけど、エリア分割すると四方が駅で囲まれているとは限らない→ArriveStationのfluentを変更
+ltl_property InvalidMoveW = []([A].move['e] -> (!X [A].move['w] W (ArriveStation)))
+ltl_property InvalidMoveE = []([A].move['w] -> (!X [A].move['e] W (ArriveStation)))
+ltl_property InvalidMoveN = []([A].move['s] -> (!X [A].move['n] W (ArriveStation)))
+ltl_property InvalidMoveS = []([A].move['n] -> (!X [A].move['s] W (ArriveStation)))
+
+
+//requirement always be needed (changeable)
+//エリア内に訪問しないstationがある場合
+ltl_property ArriveInvalidStation = []![A].arrive[X][RestY]
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property ImidiatePick = [](ArriveStorage[3][1]-> X Pick)
+ltl_property InvalidPUT = [](!Put)
+//ltl_property InvalidPICK = [](!Pick W ArriveStorage[1][1])
+
+//エリアによって変わる
+ltl_property InvalidReturn1 = [](TaskFlag1 -> (!X [A].arriveInduction[1] W (reset)))
+ltl_property InvalidReturn2 = [](TaskFlag2 -> (!X [A].arrivePicking[2] W (reset)))
+ltl_property InvalidReturn3 = [](TaskFlag3 -> (!X [A].arrive[RestX][Y] W (reset)))
+
+
+
+ltl_property InvalidArriveStation = [](!ArriveInvalidPicking)
+
+
+
+
+ltl_property First = [](!(ArriveInduction[Y]) W TaskFirst)
+ltl_property Second = [](!ArrivePicking[X] W TaskFlag1)
+
+ltl_property Third = [](!TaskFlag3 W TaskFlag2)
+
+ltl_property Fourth = [](!Finish W TaskFlag3)
+
+assert TaskFirst = (TaskFlag0 && Pick)
+
+//ltl_property Goal1 = ([]Start)
+
+assert Goal1 = Pick
+
+controllerSpec KIVASPEC = {
+	safety = {	
+				RePICK,
+				RePUT,
+				ImidiatePick,
+				InvalidPUT,
+//				InvalidPICK,
+				InvalidReturn1,
+				InvalidReturn2,
+				InvalidReturn3,
+				InvalidMoveW,
+				InvalidMoveE,
+				InvalidMoveS,
+				InvalidMoveN,
+				STATIONALONE,
+				ArriveInvalidStation,
+				First,
+				Second,
+				Third,
+				Fourth,
+				InvalidArriveStation
+				}
+//	liveness = {Goal1}
+	controllable = {Controllable}
+}
+controller ||KivaCONT = (MAP2||ROBOT)~{KIVASPEC}.

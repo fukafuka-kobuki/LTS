@@ -1,0 +1,213 @@
+const SxmaxA = 2
+const SymaxA = 1
+const SxmaxB = 3
+const SymaxB = 1
+
+const AgentNum = 2
+const StationNumA = 0
+const StationNumB = 1
+const DockNum = 2
+
+range SxA = 0..SxmaxA
+range SyA = 0..SymaxA
+
+range SxB = 1..SxmaxB
+range SyB = 0..SymaxB
+
+range Agent = 0..1
+range Station = 0..1
+range Dock = 0..1
+
+set Controllable1 = {start,[0].moveShelf[SxA][SyA],[0].moveDock[0],[0].moveStation[0], [0].pick, [0].put}
+set Monitorable1 = {[0].arriveShelf[SxA][SyA],[0].arriveDock[0],[0].arriveStation[0], [0].picksucc, [2].pickfail, [Agent].putsucc, [Agent].putfail}
+
+set Controllable2 = {start,[1].moveShelf[SxB][SyB],[1].moveDock[1],[1].moveStation[1], [1].pick, [1].put}
+set Monitorable2 = {[1].arriveShelf[SxB][SyB],[1].arriveDock[1],[1].arriveStation[1], [1].picksucc, [1].pickfail, [1].putsucc, [1].putfail}
+
+set Controllable = {Controllable1, Controllable2}
+//environment model
+AGENT1 = (start -> START),
+START = ([0].arriveDock[0]->DOCK[0][0]),
+DOCK[0][0] = (
+	[0].moveDock[0] -> [0].arriveDock[0]-> DOCK[0][0]
+	|[0].moveShelf[sx:SxA][sy:SyA] ->[0].arriveShelf[sxa:SxA][sya:SyA] ->SHELF[sxa][sya][0]
+	|[0].moveStation[0] -> [0].arriveStation[0] -> STATION[0][0] 	
+	|[0].pick->
+		([0].picksucc-> DOCK[0][0]
+		|[0].pickfail->DOCK[0][0]
+		)
+	|[0].put->
+		([0].putsucc-> DOCK[0][0]
+		|[0].putfail->DOCK[0][0]
+		)
+),
+SHELF[sxc:SxA][syc:SyA][0]=(
+	[0].moveDock[0] -> [0].arriveDock[0]-> DOCK[0][0]
+	|[0].moveShelf[sx:SxA][sy:SyA] ->[0].arriveShelf[sxa:SxA][sya:SyA] ->SHELF[sxa][sya][0]
+	|[0].moveStation[0] -> [0].arriveStation[0] -> STATION[0][0] 	
+	|[0].pick->
+		([0].picksucc-> SHELF[sxc][syc][0]
+		|[0].pickfail->SHELF[sxc][syc][0]
+		)
+	|[0].put->
+		([0].putsucc->SHELF[sxc][syc][0]
+		|[0].putfail->SHELF[sxc][syc][0]
+		)
+),
+STATION[0][0]=(
+	[0].moveDock[0] -> [0].arriveDock[0]-> DOCK[0][0]
+	|[0].moveShelf[sx:SxA][sy:SyA] ->[0].arriveShelf[sxa:SxA][sya:SyA] ->SHELF[sxa][sya][0]
+	|[0].moveStation[0] -> [0].arriveStation[0] -> STATION[0][0] 	
+	|[0].pick->
+		([0].picksucc-> STATION[0][0]
+		|[0].pickfail->STATION[0][0]
+		)
+	|[0].put->
+		([0].putsucc-> STATION[0][0]
+		|[0].putfail->STATION[0][0]
+		)
+).
+
+   
+
+
+AGENT2 = (start -> START),
+START = ([1].arriveDock[1]->DOCK[1][1]),
+DOCK[1][1] = (
+	[1].moveDock[1] -> [1].arriveDock[1]-> DOCK[1][1]
+	|[1].moveShelf[sx:SxB][sy:SyB] ->[1].arriveShelf[sxa:SxB][sya:SyB] ->SHELF[sxa][sya][1]
+	|[1].moveStation[1] -> [1].arriveStation[1] -> STATION[1][1] 	
+	|[1].pick->
+		([1].picksucc-> DOCK[1][1]
+		|[1].pickfail->DOCK[1][1]
+		)
+	|[1].put->
+		([1].putsucc-> DOCK[1][1]
+		|[1].putfail->DOCK[1][1]
+		)
+),
+SHELF[sxc:SxB][syc:SyB][1]=(
+	[1].moveDock[1] -> [1].arriveDock[1]-> DOCK[1][1]
+	|[1].moveShelf[sx:SxB][sy:SyB] ->[1].arriveShelf[sxa:SxB][sya:SyB] ->SHELF[sxa][sya][1]
+	|[1].moveStation[1] -> [1].arriveStation[1] -> STATION[1][1] 	
+	|[1].pick->
+		([1].picksucc-> SHELF[sxc][syc][1]
+		|[1].pickfail->SHELF[sxc][syc][1]
+		)
+	|[1].put->
+		([1].putsucc->SHELF[sxc][syc][1]
+		|[1].putfail->SHELF[sxc][syc][1]
+		)
+),
+STATION[1][1]=(
+	[1].moveDock[1] -> [1].arriveDock[1]-> DOCK[1][1]
+	|[1].moveShelf[sx:SxB][sy:SyB] ->[1].arriveShelf[sxa:SxB][sya:SyB] ->SHELF[sxa][sya][1]
+	|[1].moveStation[1] -> [1].arriveStation[1] -> STATION[1][1] 	
+	|[1].pick->
+		([1].picksucc-> STATION[1][1]
+		|[1].pickfail->STATION[1][1]
+		)
+	|[1].put->
+		([1].putsucc-> STATION[1][1]
+		|[1].putfail->STATION[1][1]
+		)
+).
+ 
+
+
+||ALL = (AGENT1||AGENT2).
+   
+
+//flusent definition
+fluent Docking[a:Agent][d:Dock] = <[a].arriveDock[d], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[SxA][SyA]}> 
+fluent MoveToDock[a:Agent][d:Dock]=<[a].moveDock[d], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[SxA][SyA]}\{[a].moveDock[d]}>
+
+fluent Stationing[a:Agent][s:Station] = <[a].arriveStation[s], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[SxA][SyA]}> 
+fluent MoveToStation[a:Agent][s:Station]=<[a].moveStation[s], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[SxA][SyA]}\{[a].moveStation[s]}>
+
+fluent Shelfing[a:Agent][x:SxA][y:SyA] = <[a].arriveShelf[x][y], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[SxA][SyA]}> 
+fluent MoveToShelf[a:Agent][x:SxA][y:SyA]=<[a].moveShelf[x][y], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[SxA][SyA]}\{[a].moveShelf[x][y]}>
+
+fluent Pick[a:Agent] = <[a].pick,{[a].putsucc,[a].pickfail}>
+fluent Put[a:Agent] = <[a].put,{[a].picksucc,[a].putfail}>
+
+fluent FlagPick1 = <[0].pick,{Controllable1}\{[0].pick}>
+fluent FlagPick2 = <[1].pick,Controllable2\{[1].pick}>
+
+fluent ArriveShelf[a:Agent] = <[a].arriveShelf[x:SxA][y:SyA], {[a].moveShelf[SxA][SyA],[a].moveStation[Station],[a].moveDock[Dock]}\{[a].moveShelf[x:SxA][y:SyA]}>
+fluent ArriveSpecificShelf[a:Agent][x:SxA][y:SyA] = <[a].arriveShelf[x][y], {[a].moveShelf[SxA][SyA],[a].moveStation[Station],[a].moveDock[Dock]}\{[a].moveShelf[x][y]}>
+fluent ArriveSpecificStation[a:Agent][s:Station] = <[a].arriveStation[s], {[a].moveShelf[SxA][SyA],[a].moveStation[Station],[a].moveDock[Dock]}\{[a].moveStation[s]}>
+
+
+//assert PICKSHELF1 = (ArriveSpecificShelf[1][2][2] && Pick[1])
+assert PICKinSTATION1 = (Stationing[0][Station] && FlagPick1)
+assert PICKinDOCK1 = (Docking[0][Dock] && FlagPick1)
+
+assert Goal = ((ArriveSpecificShelf[0][1][1]&&Pick[0]) -> (ArriveSpecificStation[0][0] &&Put[0]))
+//assert Goal2 = (ArriveSpecificStation[1][1] &&Put[1])
+
+//assert GOAL = Goal1 -> Goal2
+
+ltl_property BackWithShelf1 = []!(MoveToDock[0][Dock] && Pick[0])
+ltl_property ILLIGALPICK1 = []!(PICKinSTATION1||PICKinDOCK1)
+
+controllerSpec AGENT1SPEC = {
+	safety = {BackWithShelf1,ILLIGALPICK1}
+//	liveness = {Goal}
+	controllable = {Controllable1}
+}
+controller ||ACONT1 = (AGENT1)~{AGENT1SPEC}.
+
+
+
+
+
+
+assert PICKinSTATION2 = (Stationing[1][Station] && FlagPick2)
+assert PICKinDOCK2 = (Docking[1][Dock] && FlagPick2)
+
+ltl_property BackWithShelf2 = []!(MoveToDock[1][Dock] && Pick[1])
+ltl_property ILLIGALPICK2 = []!(PICKinSTATION2||PICKinDOCK2)
+
+
+controllerSpec AGENT2SPEC = {
+	safety = {BackWithShelf2,ILLIGALPICK2}
+	controllable = {Controllable2}
+}
+controller ||ACONT2 = (AGENT2)~{AGENT2SPEC}.
+
+
+||ALLCONT =(ACONT1||ACONT2).
+
+
+assert DUPLIDOCKING1 =(Docking[0][1]&&MoveToDock[1][1])
+assert DUPLIDOCKING2 =(Docking[0][0]&&MoveToDock[1][0])
+assert DUPLIDOCKING3 =(Docking[1][1]&&MoveToDock[0][1])
+assert DUPLIDOCKING4 =(Docking[1][0]&&MoveToDock[0][0])
+
+assert DUPLISTATION1 =(Stationing[1][1]&&MoveToStation[0][1])
+assert DUPLISTATION2 =(Stationing[1][0]&&MoveToStation[0][0])
+assert DUPLISTATION3 =(Stationing[0][1]&&MoveToStation[1][1])
+assert DUPLISTATION4 =(Stationing[0][0]&&MoveToStation[1][0])
+
+assert DUPLISHELFING1 =(Shelfing[1][1][1]&&MoveToShelf[0][1][1])
+assert DUPLISHELFING2 =(Shelfing[1][0][1]&&MoveToShelf[0][0][1])
+assert DUPLISHELFING3 =(Shelfing[0][1][1]&&MoveToShelf[1][1][1])
+assert DUPLISHELFING4 =(Shelfing[0][0][1]&&MoveToShelf[1][0][1])
+
+
+ltl_property DUPLI = []!(DUPLIDOCKING1||DUPLIDOCKING2||DUPLIDOCKING3||DUPLIDOCKING4)
+ltl_property DUPLIST = []!(DUPLISTATION1||DUPLISTATION2||DUPLISTATION3||DUPLISTATION4)
+ltl_property DUPLISH = []!(DUPLISHELFING1||DUPLISHELFING2||DUPLISHELFING3||DUPLISHELFING4)
+
+controllerSpec KIVASYSTEM = {
+	safety = {DUPLI,DUPLIST,DUPLISH}
+	controllable = {Controllable}
+}
+
+controller ||WHOLE = (ALLCONT)~{KIVASYSTEM}.
+
+//assert DupliDocking[a:Agent][a1:Agent\{a}][d:Dock] =[]!( Docking[d][a]&&Docking[d][a1])
+//要求中心or実装中心
+//来週まで：どういう捨象ができるか
+

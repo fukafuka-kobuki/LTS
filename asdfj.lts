@@ -1,0 +1,47 @@
+S1 = (c1 -> S4 |c2 -> S3 |c3 -> S2|c4 -> S6),
+S2 = (c3 -> S7 | l -> S2),
+S3 = ( a -> S3),
+S4 = ( a -> S5),
+S5 = (g1 -> S4 |g2 -> S4),
+S6 = ( w -> S6),
+S7 = ( a -> S2).
+||Env = (S1).
+
+set Assumption = {a}
+set GoalAction = {g1,g2}
+set Action = {c1, c2, c3, c4}
+set BadAction = {w}
+set ElseAction = {l}
+set ValidAction = {g1,g2,c1,c2,c3,c4,a,l}
+set AllAction = {c1,c2,c3,c4,g1,g2}
+
+fluent BADACTION = <w, ValidAction>
+fluent G = <GoalAction,AllAction\{g1,g2}>
+fluent AS = <Assumption, GoalAction>
+
+fluent G1 =<g1,AllAction\{g1,g2}>
+fluent G2 =<g2,AllAction\{g1,g2}>
+
+assert ASSUMPTION = AS
+assert GOAL = G
+
+ltl_property PREVENT = []!(BADACTION)
+
+//ltl_property GOAL_ASSIST1 = [](g1->((!G1) W G2))
+ltl_property GOAL_ASSIST1 = []((!G2) W G1)
+ltl_property GOAL_ASSIST2 = [](g1 -> (X g2))
+ltl_property GOAL_ASSIST3 = [](g2 -> (X g1))
+
+//GOAL_ASSIST2 = (a->g1->GOAL_ASSIST3),
+//GOAL_ASSIST3 = (a ->g2-> GOAL_ASSIST2).
+
+controllerSpec SPECIFICATION = {
+	safety = {PREVENT,GOAL_ASSIST1,GOAL_ASSIST2,GOAL_ASSIST3}
+//	safety = {PREVENT}
+//	safety = {PREVENT,GOAL_ASSIST1,GOAL_ASSIST2}
+	assumption ={ASSUMPTION}
+	liveness = {GOAL}
+	controllable = {AllAction}
+}
+
+controller ||C = (S1)~{SPECIFICATION}.

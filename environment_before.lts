@@ -1,0 +1,30 @@
+L1 = (sweep1 -> L1| moveUp -> L4| moveRight -> L2), 				 
+L2 = (sweep2 -> L2| moveUp -> L5| moveRight -> L3| moveLeft -> L1),
+L3 = (sweep3 -> L3| moveUp -> L6| 				  moveLeft -> L2),
+L4 = (sweep4 -> L4| moveUp -> L7| moveRight -> L5| 				  moveDown -> L1),
+L5 = (sweep5 -> L5| moveUp -> L8| moveRight -> L6| moveLeft -> L4| moveDown -> L2),
+L6 = (sweep6 -> L6| moveUp -> L9| 				  moveLeft -> L5| moveDown -> L3),
+L7 = (sweep7 -> L7| 			     moveRight -> L8| 				  moveDown -> L4),
+L8 = (sweep8 -> L8| 			     moveRight -> L9| moveLeft -> L7| moveDown -> L5),
+L9 = (sweep9 -> L9| 							      moveLeft -> L8| moveDown -> L6).
+||Env = (L1).
+
+
+
+set AllAction = {moveUp, moveRight, moveLeft, moveDown, sweep1, sweep2, sweep3, sweep4, sweep5, sweep6, sweep7, sweep8, sweep9}
+
+
+fluent Goal = <sweep9, AllAction\{sweep9}>
+
+
+assert GOAL = Goal
+
+
+controllerSpec SPECIFICATION = {
+//	safety = {PREVENT,GOAL_ASSIST1,GOAL_ASSIST2,GOAL_ASSIST3}
+//	assumption ={ASSUMPTION}
+	liveness = {GOAL}
+	controllable = {AllAction}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

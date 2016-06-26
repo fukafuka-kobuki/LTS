@@ -1,0 +1,313 @@
+const MaxX = 2
+const MaxY = 2
+const MaxTime = 10
+
+const RestX = MaxX + 1
+const RestY = MaxY + 1
+
+const AgentNum = 1
+
+range X = 0..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+range A = 0..AgentNum
+
+
+set Direction = {e,w,n,s}
+set MoveAction0 = {[0].move[Direction]}
+
+set Controllable0  = {MoveAction0, [0].wait, [0].pick, [0].put, start, end}
+
+set MoveAction1 = {[1].move[Direction]}
+set Controllable1  = {MoveAction1, [1].wait, [1].pick, [1].put, start, end}
+
+//set ArriveAction0 = {[0].arriveReplenish[X], [0].arrivePicking[X], [0].arriveShipping[Y], [0].arriveInduction[Y]}
+set Controllable = {Controllable0, Controllable1}
+
+//set ArriveAction = { arriveInduction[Y], arrivePicking[X]}
+
+ENVforUPDATE = (start -> WAITING),
+WAITING = (changeArea -> REMOVING|
+			getRobot -> GETTING),
+REMOVING = (removeRobot -> startNewSpec -> WAITING),
+GETTING = (acceptRobot -> startNewSpec -> WAITING).
+
+
+//START(I = 0) = (start -> INITIAL),
+INITIAL(I = 0) = (when (I == 0) [I].arrive[0][2]->start -> STORAGE[0][2]
+			|when (I ==1) [I].arrive[1][2] ->start-> STORAGE[1][2]),
+STORAGE[x:X][y:Y] = (
+					when (x < MaxX && y != 1) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0 && y != 1) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
+					|when (x == MaxX) [I].move['e] -> [I].arriveShipping[y]->[I].wait-> SHIPPING[y]
+					|when (x == 0) [I].move['w] -> [I].arriveInduction[y]->[I].wait-> INDUCTION[y]
+					|when (y < MaxY) [I].move['s] -> [I].arrive[x][y+1]-> STORAGE[x][y+1]
+					|when (y > 0) [I].move['n] -> [I].arrive[x][y-1]->STORAGE[x][y-1]
+					|when (y == MaxY) [I].move['s] -> [I].arriveReplenish[x]->[I].wait-> REPLENISH[x]
+					|when (y == 0) [I].move['n] -> [I].arrivePicking[x]->[I].wait-> PICKING[x]
+					|[I].pick -> [I].picksucc -> STORAGE[x][y]
+					|[I].put -> [I].putsucc -> STORAGE[x][y]
+					|end ->reset ->INITIAL
+),
+SHIPPING[y:Y] = ([I].move['w] -> [I].arrive[MaxX][y]-> STORAGE[MaxX][y]
+				|end ->reset -> INITIAL
+),
+REPLENISH[x:X] =([I].move['n] -> [I].arrive[x][MaxY]-> STORAGE[x][MaxY]
+				|end ->reset -> INITIAL
+), 
+INDUCTION[y:Y]=([I].move['e] -> [I].arrive[0][y]-> STORAGE[0][y]
+				|end ->reset -> INITIAL
+),
+PICKING[x:X]=([I].move['s] -> [I].arrive[x][0]-> STORAGE[x][0]
+				|end ->reset -> start->INITIAL
+).
+
+||ALL(N = AgentNum)=
+	forall [i: 0..N]
+ 	(INITIAL(i)).
+   
+
+//fluent Definition
+//about Arrive
+fluent ArriveStorage[a:A][x:X][y:Y] = <[a].arrive[x][y], {[a].move[Direction], reset}>//
+fluent ArriveInduction[a:A][y:Y] = <[a].arriveInduction[y], {[a].move['e],reset}>
+fluent ArrivePicking[a:A][x:X] = <[a].arrivePicking[x], {[a].move['s],reset}>
+fluent ArriveShipping[a:A][y:Y] = <[a].arriveShipping[y], {[a].move['w],reset}>
+fluent ArriveReplenish[a:A][x:X] = <[a].arriveReplenish[x], {[a].move['n],reset}>
+
+fluent ArriveStation[a:A] = <{[a].arriveReplenish[X],[a].arriveShipping[Y],[a].arriveInduction[Y],[a].arrivePicking[X]}, {[a].arrive[X][Y],reset}>
+
+fluent INVALID_STATION0[a:A] = <{[a].arriveReplenish[X],[a].arriveShipping[Y],[a].arriveInduction[Y],[a].arrivePicking[X]}\{[a].arriveShipping[2]}, {[a].arrive[X][Y],reset}>
+
+fluent Finish = <end, reset>
+fluent Start = <start, {end,reset}>
+
+//about pick
+fluent Pick[a:A] = <[a].pick,{[a].put,reset}>//
+fluent Put[a:A] = <[a].put,{[a].pick,reset}>//
+
+//requirement always be needed (not change)
+ltl_property RePICK0 = []((Pick[0] ->X! [0].pick)) //二重pick
+ltl_property RePUT0 = []((Put[0] -> X! [0].put))	//二重put 
+
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property ImidiatePick0 = [](ArriveStorage[0][0][2]-> X Pick[0])
+ltl_property InvalidPUT0 = [](!Put[0])
+ltl_property InvalidEnd0 = [](!Finish W Goal04)
+
+ltl_property InvalidMoveW = []([0].move['e] -> (!X [0].move['w] W (ArriveStation[0])))
+ltl_property InvalidMoveE = []([0].move['w] -> (!X [0].move['e] W (ArriveStation[0])))
+ltl_property InvalidMoveN = []([0].move['s] -> (!X [0].move['n] W (ArriveStation[0])))
+ltl_property InvalidMoveS = []([0].move['n] -> (!X [0].move['s] W (ArriveStation[0])))
+
+ltl_property InvalidArriveStation = []!(INVALID_STATION0[0])
+
+
+
+fluent TaskFlag0 = <[0].arrive[1][1],reset>
+//fluent FlagforTask1 = <[0].arriveInduction[1], reset>
+//fluent FlagforTask2 = <[0].arrivePicking[1], reset>
+fluent FlagforTask3 = <[0].arriveShipping[2], reset>
+
+//ltl_property InvalidReturn1 = [](FlagforTask1 -> (!X [0].arriveInduction[1] W (reset)))
+//ltl_property InvalidReturn2 = [](FlagforTask2 -> (!X [0].arrivePicking[1] W (reset)))
+ltl_property InvalidReturn3 = [](FlagforTask3 -> (!X [0].arriveShipping[1] W (reset)))
+
+
+assert TaskFirst = (TaskFlag0 && Pick[0])
+
+//ltl_property GOAL01 = [] ((ArriveStorage[0][1][1] && [0].pick) -> start)
+//ltl_property GOAL02 = [] (!(ArriveInduction[0][1]) W (TaskFirst))
+//ltl_property GOAL03 = [] (!(ArrivePicking[0][1]) W (FlagforTask1))
+//ltl_property GOAL04 = [] (!(ArriveShipping[0][1]) W (FlagforTask2))
+
+
+assert StartTask = Start
+assert Goal01 = (ArriveStorage[0][1][1] && Pick[0])
+assert Goal02 = (ArriveInduction[0][1])
+assert Goal03 = (ArrivePicking[0][1])
+assert Goal04 = (ArriveShipping[0][2])
+assert Goal05 =  Finish
+
+//ltl_property VisitDestination= [](ArriveInduction[0][1] && <> (ArrivePicking[0][1]) && <>(ArriveShipping[0][1]))
+
+ltl_property VisitDest = [](start -> (X<>ArriveInduction[0][1]))
+// && (<> ArrivePicking[0][1]) && (<>ArriveShipping[0][1]))
+
+
+controllerSpec KIVASPEC0 = {
+	safety = {	
+				InvalidEnd0 ,
+				RePICK0,
+				RePUT0,
+				InvalidPUT0,
+				ImidiatePick0,
+//				InvalidMoveW,
+//				InvalidMoveE,
+//				InvalidMoveS,
+//				InvalidMoveN,
+//				InvalidReturn1, 
+//				InvalidReturn2, 
+				InvalidReturn3, 
+				InvalidArriveStation,
+//				GOAL01,
+//				GOAL02,
+//				GOAL03,
+//				GOAL04,
+//				VisitDestination
+//				VisitDest
+				}
+
+	assumption = {StartTask}
+	liveness = {Goal05}
+//	liveness = {VisitDest}
+	controllable = {Controllable0}
+}
+controller ||KivaCONT0 = (INITIAL(0))~{KIVASPEC0}.
+
+
+
+//requirement always be needed (not change)
+ltl_property RePICK1 = []((Pick[1] ->X! [1].pick)) //二重pick
+ltl_property RePUT1 = []((Put[1] -> X! [1].put))	//二重put 
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property InvalidPUT1 = [](!Put[1])
+ltl_property InvalidEnd1 = [](!Finish W Goal12)
+ltl_property ImidiatePick1 = [](ArriveStorage[1][1][2]-> X Pick[1])
+
+ltl_property InvalidMoveW1 = []([1].move['e] -> (!X [1].move['w] W (ArriveStation[1])))
+ltl_property InvalidMoveE1 = []([1].move['w] -> (!X [1].move['e] W (ArriveStation[1])))
+ltl_property InvalidMoveN1 = []([1].move['s] -> (!X [1].move['n] W (ArriveStation[1])))
+ltl_property InvalidMoveS1 = []([1].move['n] -> (!X [1].move['s] W (ArriveStation[1])))
+
+fluent INVALID_STATION1[a:A] = <{[a].arriveReplenish[X],[a].arriveShipping[Y],[a].arriveInduction[Y],[a].arrivePicking[X]}\{[a].arriveInduction[2]}, {[a].arrive[X][Y],reset}>
+ltl_property InvalidArriveStation1 = []!(INVALID_STATION1[1])
+
+
+
+fluent TaskFlag10 = <[1].arrive[1][1],reset>
+fluent FlagforTask11 = <[1].arriveInduction[1], reset>
+fluent FlagforTask12 = <[1].arrivePicking[1], reset>
+fluent FlagforTask13 = <[1].arriveInduction[2], reset>
+
+//ltl_property InvalidReturn11 = [](FlagforTask11 -> (!X [1].arriveInduction[1] W (reset)))
+//ltl_property InvalidReturn12 = [](FlagforTask12 -> (!X [1].arrivePicking[1] W (reset)))
+ltl_property InvalidReturn13 = [](FlagforTask13 -> (!X [1].arriveInduction[1] W (reset)))
+
+
+assert TaskFirst1 = (TaskFlag10 && Pick[1])
+
+//ltl_property GOAL01 = [] ((ArriveStorage[0][1][1] && [0].pick) -> start)
+//ltl_property GOAL12 = [] (!(ArriveInduction[1][1]) W (TaskFirst1))
+//ltl_property GOAL13 = [] (!(ArrivePicking[1][1]) W (FlagforTask11))
+//ltl_property GOAL14 = [] (!(ArriveShipping[1][0]) W (FlagforTask12))
+
+
+assert Goal11 = (ArriveStorage[1][1][0] && Pick[1])
+assert Goal12 = (ArriveInduction[1][2])
+assert Goal13 = (ArrivePicking[1][1])
+assert Goal14 = (ArriveShipping[1][0])
+
+
+controllerSpec KIVASPEC1 = {
+	safety = {	
+				InvalidEnd1,
+				RePICK1,
+				RePUT1,
+				InvalidPUT1,
+//				STATIONALONE,
+				ImidiatePick1,
+//				InvalidMoveW1,
+//				InvalidMoveE1,
+//				InvalidMoveS1,
+//				InvalidMoveN1,
+//				InvalidReturn11, 
+//				InvalidReturn12, 
+				InvalidReturn13, 
+				InvalidArriveStation1,
+//				GOAL01,
+//				GOAL12,
+	//			GOAL13,
+//				GOAL14
+
+				}
+	assumption = {StartTask}
+	liveness = {Goal05}
+	controllable = {Controllable1}
+}
+controller ||KivaCONT1 = (INITIAL(1))~{KIVASPEC1}.
+
+||ALLCONT = (KivaCONT0 || KivaCONT1).
+
+
+//ltl_property StopConflict =[] forall[x:X][y:Y]!((ArriveStorage[0][x][y] && ArriveStorage[1][x][y]))
+ltl_property StopConflict0T0 =[]!((ArriveStorage[0][0][0] && ArriveStorage[1][0][0]))
+ltl_property StopConflict0T1 =[]!((ArriveStorage[0][0][1] && ArriveStorage[1][0][1]))
+ltl_property StopConflict0T2 =[]!((ArriveStorage[0][0][2] && ArriveStorage[1][0][2]))
+ltl_property StopConflict1T0 =[]!((ArriveStorage[0][1][0] && ArriveStorage[1][1][0]))
+ltl_property StopConflict1T1 =[]!((ArriveStorage[0][1][1] && ArriveStorage[1][1][1]))
+ltl_property StopConflict1T2 =[]!((ArriveStorage[0][1][2] && ArriveStorage[1][1][2]))
+ltl_property StopConflict2T0 =[]!((ArriveStorage[0][2][0] && ArriveStorage[1][2][0]))
+ltl_property StopConflict2T1 =[]!((ArriveStorage[0][2][1] && ArriveStorage[1][2][1]))
+ltl_property StopConflict2T2 =[]!((ArriveStorage[0][2][2] && ArriveStorage[1][2][2]))
+
+//ltl_property StopConflict =  []!([0].move[Direction] && X [0].arrive[0][0] W )
+
+controllerSpec ALLNaiveSPEC = {
+	safety = {
+				InvalidEnd0 ,
+				RePICK0,
+				RePUT0,
+				InvalidPUT0,
+				ImidiatePick0,
+//				InvalidReturn1, 
+//				InvalidReturn2, 
+				InvalidReturn3, 
+				InvalidArriveStation,
+//				GOAL01,
+//				GOAL02,
+//				GOAL03,
+//				GOAL04,
+				InvalidEnd1,
+				RePICK1,
+				RePUT1,
+				InvalidPUT1,
+//				STATIONALONE,
+				ImidiatePick1,
+//				InvalidReturn11, 
+//				InvalidReturn12, 
+				InvalidReturn13, 
+				InvalidArriveStation1,
+//				GOAL01,
+//				GOAL12,
+//				GOAL13,
+//				GOAL14,
+StopConflict0T0,StopConflict0T1,StopConflict0T2,
+StopConflict1T0,StopConflict1T1,StopConflict1T2,
+StopConflict2T0,StopConflict2T1,StopConflict2T2
+}
+	assumption = {StartTask}
+	liveness = {Goal05}
+
+//	liveness = {Goal01,Goal11, Goal02, Goal03,Goal04, Goal12, Goal13,Goal14}
+	controllable = {Controllable}
+}
+controller ||AllNaiveManager = (ALL)~{ALLNaiveSPEC}.
+
+
+controllerSpec ALLSPEC = {
+	safety = {
+StopConflict0T0,StopConflict0T1,StopConflict0T2,
+StopConflict1T0,StopConflict1T1,StopConflict1T2,
+StopConflict2T0,StopConflict2T1,StopConflict2T2
+
+		}
+	controllable = {Controllable}
+}
+controller ||AllManager = (ALLCONT)~{ALLSPEC}.
+
+

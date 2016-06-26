@@ -1,0 +1,144 @@
+//Sxmax: 棚配置の縦列数
+//Symax: 棚配置の横列数
+//→棚の数= Sxmax * Symax
+//AgentNum: Agentの数
+//StationNum:Station(workerの待機場所)の数
+//DockNum: Dock(Agentの待機場所)の数
+//
+//これらの数値を変更すれば環境モデルを構築可能
+
+const Sxmax = 2
+const Symax = 2
+
+const AgentNum = 2
+const StationNum = 2
+const DockNum = 2
+
+range Sx = 1..Sxmax
+range Sy = 1..Symax
+
+range Agent = 1..AgentNum
+range Station = 1..StationNum
+range Dock = 1..DockNum
+
+set Controllable1 = {start,[1].moveShelf[Sx][Sy],[1].moveDock[Dock],[1].moveStation[Station], [1].pick, [1].put}
+set Controllable2 = {start,[2].moveShelf[Sx][Sy],[2].moveDock[Dock],[2].moveStation[Station], [2].pick, [2].put}
+set Controllable = {Controllable1,Controllable2}
+set Monitorable = {[Agent].arriveShelf[Sx][Sy],[Agent].arriveDock[Dock],[Agent].arriveStation[Station], [Agent].picksucc, [Agent].pickfail, [Agent].putsucc, [Agent].putfail}
+
+//environment model
+ACONT1 = Q0,
+    Q0    = (start -> Q16),
+    Q1    = ([1].arriveShelf[1][1] -> Q2),
+    Q2    = ([1].pick -> Q4),
+    Q3    = ([1].moveShelf[1][1] -> Q11),
+    Q4    = ([1].picksucc -> Q5),
+    Q5    = ([1].moveStation[1] -> Q12),
+    Q6    = ([1].putsucc -> Q7),
+    Q7    = ([1].moveDock[2] -> Q13
+          |[1].moveDock[1] -> Q14),
+    Q8    = ([1].end -> Q9),
+    Q9    = ([1].reset -> Q10),
+    Q10    = ([1].moveShelf[1][1] -> Q1),
+    Q11    = ([1].arriveShelf[1][1] -> Q15),
+    Q12    = ([1].arriveStation[1] -> Q3),
+    Q13    = ([1].arriveDock[2] -> Q8),
+    Q14    = ([1].arriveDock[1] -> Q8),
+    Q15    = ([1].put -> Q6),
+    Q16    = ([1].arriveDock[1] -> Q10).
+
+ACONT2 = Q0,
+    Q0    = (start -> Q16),
+    Q1    = ([2].arriveShelf[1][1] -> Q2),
+    Q2    = ([2].pick -> Q4),
+    Q3    = ([2].moveShelf[1][1] -> Q11),
+    Q4    = ([2].picksucc -> Q5),
+    Q5    = ([2].moveStation[1] -> Q12),
+    Q6    = ([2].putsucc -> Q7),
+    Q7    = ([2].moveDock[2] -> Q13
+          |[2].moveDock[1] -> Q14),
+    Q8    = ([2].end -> Q9),
+    Q9    = ([2].reset -> Q10),
+    Q10    = ([2].moveShelf[1][1] -> Q1),
+    Q11    = ([2].arriveShelf[1][1] -> Q15),
+    Q12    = ([2].arriveStation[1] -> Q3),
+    Q13    = ([2].arriveDock[2] -> Q8),
+    Q14    = ([2].arriveDock[1] -> Q8),
+    Q15    = ([2].put -> Q6),
+    Q16    = ([2].arriveDock[1] -> Q10).
+ACONT3 = Q0,
+    Q0    = (start -> Q16),
+    Q1    = ([3].arriveShelf[1][1] -> Q2),
+    Q2    = ([3].pick -> Q4),
+    Q3    = ([3].moveShelf[1][1] -> Q11),
+    Q4    = ([3].picksucc -> Q5),
+    Q5    = ([3].moveStation[1] -> Q12),
+    Q6    = ([3].putsucc -> Q7),
+    Q7    = ([3].moveDock[2] -> Q13
+          |[3].moveDock[1] -> Q14),
+    Q8    = ([3].end -> Q9),
+    Q9    = ([3].reset -> Q10),
+    Q10    = ([3].moveShelf[1][1] -> Q1),
+    Q11    = ([3].arriveShelf[1][1] -> Q15),
+    Q12    = ([3].arriveStation[1] -> Q3),
+    Q13    = ([3].arriveDock[2] -> Q8),
+    Q14    = ([3].arriveDock[1] -> Q8),
+    Q15    = ([3].put -> Q6),
+    Q16    = ([3].arriveDock[1] -> Q10).
+//fluent definition
+fluent Docking[a:Agent][d:Dock] = <[a].arriveDock[d], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[Sx][Sy]}> 
+fluent MoveToDock[a:Agent][d:Dock]=<[a].moveDock[d], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[Sx][Sy]}\{[a].moveDock[d]}>
+
+fluent Stationing[a:Agent][s:Station] = <[a].arriveStation[s], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[Sx][Sy]}> 
+fluent MoveToStation[a:Agent][s:Station]=<[a].moveStation[s], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[Sx][Sy]}\{[a].moveStation[s]}>
+fluent MoveStation[a:Agent][s:Station]=<[a].moveStation[s], [a].arriveStation[Station]>
+
+fluent Shelfing[a:Agent][x:Sx][y:Sy] = <[a].arriveShelf[x][y], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[Sx][Sy]}> 
+fluent MoveToShelf[a:Agent][x:Sx][y:Sy]=<[a].moveShelf[x][y], {[a].moveDock[Dock],[a].moveStation[Station],[a].moveShelf[Sx][Sy]}\{[a].moveShelf[x][y]}>
+
+fluent Pick[a:Agent] = <[a].pick,{[a].putsucc,[a].pickfail}>
+fluent Put[a:Agent] = <[a].put,{[a].picksucc,[a].putfail}>
+
+fluent FlagPick1 = <[1].pick,{Controllable1}\{[1].pick}>
+fluent FlagPick2 = <[2].pick,{Controllable2}\{[2].pick}>
+
+fluent ArriveShelf[a:Agent] = <[a].arriveShelf[x:Sx][y:Sy], {[a].moveShelf[Sx][Sy],[a].moveStation[Station],[a].moveDock[Dock]}\{[a].moveShelf[x:Sx][y:Sy]}>
+fluent ArriveSpecificShelf[a:Agent][x:Sx][y:Sy] = <[a].arriveShelf[x][y], {[a].moveShelf[Sx][Sy],[a].moveStation[Station],[a].moveDock[Dock]}\{[a].moveShelf[x][y]}>
+fluent ArriveSpecificStation[a:Agent][s:Station] = <[a].arriveStation[s], {[a].moveShelf[Sx][Sy],[a].moveStation[Station],[a].moveDock[Dock]}\{[a].moveStation[s]}>
+
+
+||ALLCONT =(ACONT1||ACONT2).
+
+
+assert DUPLIDOCKING1 =(Docking[1][1]->!X [2].moveDock[1])
+assert DUPLIDOCKING2 =(Docking[1][2]->!X [2].moveDock[2])
+assert DUPLIDOCKING3 =(Docking[2][1]->!X [1].moveDock[1])
+assert DUPLIDOCKING4 =(Docking[2][2]->!X [1].moveDock[2])
+
+assert DUPLISTATION1 =(Stationing[1][1]->!X [2].moveStation[1])
+assert DUPLISTATION2 =(Stationing[1][2]->!X [2].moveStation[2])
+assert DUPLISTATION3 =(Stationing[2][1]->!X [1].moveStation[1])
+assert DUPLISTATION4 =(Stationing[2][2]->!X [1].moveStation[2])
+
+assert DUPLISHELFING1 =(Shelfing[1][1][1]->!X [2].moveShelf[1][1])
+assert DUPLISHELFING2 =(Shelfing[1][2][1]->!X [2].moveShelf[2][1])
+assert DUPLISHELFING3 =(Shelfing[2][1][1]->!X [1].moveShelf[1][1])
+assert DUPLISHELFING4 =(Shelfing[2][2][1]->!X [1].moveShelf[2][1])
+
+
+ltl_property DUPLI = [](DUPLIDOCKING1&&DUPLIDOCKING2&&DUPLIDOCKING3&&DUPLIDOCKING4)
+ltl_property DUPLIST = [](DUPLISTATION1&&DUPLISTATION2&&DUPLISTATION3&&DUPLISTATION4)
+ltl_property DUPLISH = [](DUPLISHELFING1&&DUPLISHELFING2&&DUPLISHELFING3&&DUPLISHELFING4)
+
+controllerSpec KIVASYSTEM = {
+	safety = {DUPLI,DUPLIST,DUPLISH}
+	controllable = {Controllable}
+}
+
+controller ||WHOLE = (ALLCONT)~{KIVASYSTEM}.
+
+
+
+//要求中心or実装中心
+//来週まで：どういう捨象ができるか
+

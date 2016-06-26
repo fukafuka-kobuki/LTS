@@ -1,0 +1,531 @@
+const X_MAX = 2
+const Y_MAX = 2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+const X_MAXf = 2
+const Y_MAXf = 2
+range Xf = 0..X_MAXf
+range Yf = 0..Y_MAXf
+
+set FlagAction = {stop[X][Y]}
+set FlagActionf = {stopf[Xf][Yf]}
+
+set Controllable = {enterstair, outstair,moveright, moveleft, up,down}
+set FloorControllable = {enterstair, outstair,floorinit,moverightf, moveleftf, movefront,moveback}
+
+
+fluent OUT = <floorinit, outstair>
+fluent ENTER = <enterstair, outstair>
+//fluent LOCATION[x:X][y:Y]=<{stop[x][y]},{FlagAction}\{stop[x][y]}>
+fluent CLEANACHIEVE[x:X][y:Y]=<stop[x][y],outstair> 
+fluent CLEANACHIEVEF[a:Xf][b:Yf]=<stopf[a][b],floorinit>
+
+assert ENTERS = ENTER
+assert OUTS = OUT
+//assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2])
+
+assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2]&&CLEANACHIEVE[1][2]&&CLEANACHIEVE[2][2]&&CLEANACHIEVE[0][1]&&CLEANACHIEVE[1][1]&&CLEANACHIEVE[2][1]&&CLEANACHIEVE[0][0]&&CLEANACHIEVE[1][0]&&CLEANACHIEVE[2][0]&&CLEANACHIEVEF[0][2]&&CLEANACHIEVEF[1][2]&&CLEANACHIEVEF[2][2]&&CLEANACHIEVEF[0][1]&&CLEANACHIEVEF[1][1]&&CLEANACHIEVEF[2][1]&&CLEANACHIEVEF[0][0]&&CLEANACHIEVEF[1][0]&&CLEANACHIEVEF[2][0])
+
+//assert CLEAN_ACHIEVEF = (CLEANACHIEVEF[1][2])
+
+fluent Down = <{down},{Controllable,reachright,reachleft}\{down}>
+fluent RIGHT = <reachright,{moveleft}>
+fluent LEFT = <reachleft , moveright>
+fluent MoveRight = <moveright, reachright>
+fluent MoveLeft = <moveleft, reachleft>
+fluent CLEAN_RIGHT = <reachright,{down}>
+fluent CLEAN_LEFT = <reachleft , {down}>
+fluent EnterS = <enterstair, {Controllable,reachright,reachleft}\{enterstair}>
+fluent Invalid = <up, Controllable\{up}>
+
+
+
+
+
+//assertion for stair
+assert ENTER = EnterS
+assert DOWN = Down
+assert DOWNS = (Down||EnterS)
+assert SWEEP_COMPLETE = (CLEAN_RIGHT && CLEAN_LEFT)
+assert SWEEP_RIGHT = CLEAN_RIGHT
+assert SWEEP_LEFT = CLEAN_LEFT
+
+
+//assertion for floor
+
+
+
+
+
+
+
+L1 = STAIR,
+STAIR = (enterstair->L[0][11]),
+L[0][11] = (
+		moveright-> L[1][11]|
+		moveleft->reachleft->L[0][11]|
+		down  -> L[0][10]),
+L[1][11] = (
+		moveleft-> L[0][11]| 
+		moveright-> L[2][11]| 
+		down -> L[1][10]),
+L[2][11] = (
+		moveleft-> L[1][11]| 
+		moveright -> L[3][11]|
+		down-> L[2][10]),
+L[3][11] = (
+		moveright-> L[4][11]|
+		moveleft->L[2][11]|
+		down -> L[3][10]),
+L[4][11] = (
+		moveleft-> L[3][11]| 
+		moveright-> L[5][11]| 
+		down -> L[4][10]),
+L[5][11] = (
+		moveleft-> L[4][11]| 
+		moveright -> reachright -> L[5][11]|
+		down -> L[5][10]),
+
+
+L[0][10] = (
+		moveright-> L[1][10]|
+		moveleft->reachleft->L[0][10]|
+		down  -> L[0][9]|
+		up -> L[0][11]),
+L[1][10] = (
+		moveleft-> L[0][10]| 
+		moveright-> L[2][10]| 
+		down -> L[1][9]|
+		up -> L[1][11]),
+L[2][10] = (
+		moveleft-> L[1][10]| 
+		moveright -> L[3][10]|
+		down-> L[2][9]|
+		up -> L[2][11]),
+L[3][10] = (
+		moveright-> L[4][10]|
+		moveleft->L[2][10]|
+		down -> L[3][9]|
+		up -> L[3][11]),
+L[4][10] = (
+		moveleft-> L[3][10]| 
+		moveright-> L[5][10]| 
+		down -> L[4][9]|
+		up -> L[4][11]),
+L[5][10] = (
+		moveleft-> L[4][10]| 
+		moveright -> reachright -> L[5][10]|
+		down -> L[5][10]|
+		up -> L[5][11]),
+
+
+L[0][9] = (
+		moveright-> L[1][9]|
+		moveleft->reachleft->L[0][9]|
+		down  -> L[0][8]|
+		up -> L[0][10]),
+L[1][9] = (
+		moveleft-> L[0][9]| 
+		moveright-> L[2][9]| 
+		down -> L[1][8]|
+		up -> L[1][10]),
+L[2][9] = (
+		moveleft-> L[1][9]| 
+		moveright -> L[3][9]|
+		down-> L[2][8]|
+		up -> L[2][10]),
+L[3][9] = (
+		moveright-> L[4][9]|
+		moveleft->L[2][9]|
+		down -> L[3][8]|
+		up -> L[3][10]),
+L[4][9] = (
+		moveleft-> L[3][9]| 
+		moveright-> L[5][9]| 
+		down -> L[4][8]|
+		up -> L[4][10]),
+L[5][9] = (
+		moveleft-> L[4][9]| 
+		moveright -> reachright -> L[5][9]|
+		down -> L[5][8]|
+		up -> L[5][10]),
+
+
+L[0][8] = (
+		moveright-> L[1][8]|
+		moveleft->reachleft->L[0][8]|
+		down  -> L[0][7]|
+		up -> L[0][9]),
+L[1][8] = (
+		moveleft-> L[0][8]| 
+		moveright-> L[2][8]| 
+		down -> L[1][7]|
+		up -> L[1][9]),
+L[2][8] = (
+		moveleft-> L[1][8]| 
+		moveright -> L[3][8]|
+		down-> L[2][7]|
+		up -> L[2][9]),
+L[3][8] = (
+		moveright-> L[4][8]|
+		moveleft->L[2][8]|
+		down -> L[3][7]|
+		up -> L[3][9]),
+L[4][8] = (
+		moveleft-> L[3][8]| 
+		moveright-> L[5][8]| 
+		down -> L[4][7]|
+		up -> L[4][9]),
+L[5][8] = (
+		moveleft-> L[4][8]| 
+		moveright -> reachright -> L[5][8]|
+		down -> L[5][7]|
+		up -> L[5][9]),
+
+
+L[0][7] = (
+		moveright-> L[1][7]|
+		moveleft->reachleft->L[0][7]|
+		down  -> L[0][6]|
+		up -> L[0][8]),
+L[1][7] = (
+		moveleft-> L[0][7]| 
+		moveright-> L[2][7]| 
+		down -> L[1][6]|
+		up -> L[1][8]),
+L[2][7] = (
+		moveleft-> L[1][7]| 
+		moveright -> L[3][7]|
+		down-> L[2][6]|
+		up -> L[2][8]),
+L[3][7] = (
+		moveright-> L[4][7]|
+		moveleft->L[2][7]|
+		down -> L[3][6]|
+		up -> L[3][8]),
+L[4][7] = (
+		moveleft-> L[3][7]| 
+		moveright-> L[5][7]| 
+		down -> L[4][6]|
+		up -> L[4][8]),
+L[5][7] = (
+		moveleft-> L[4][7]| 
+		moveright -> reachright -> L[5][7]|
+		down -> L[5][6]|
+		up -> L[5][8]),
+
+
+L[0][6] = (
+		moveright-> L[1][6]|
+		moveleft->reachleft->L[0][6]|
+		down  -> L[0][5]|
+		up -> L[0][7]),
+L[1][6] = (
+		moveleft-> L[0][6]| 
+		moveright-> L[2][6]| 
+		down -> L[1][5]|
+		up -> L[1][7]),
+L[2][6] = (
+		moveleft-> L[1][6]| 
+		moveright -> L[3][6]|
+		down-> L[2][5]|
+		up -> L[2][7]),
+L[3][6] = (
+		moveright-> L[4][6]|
+		moveleft->L[2][6]|
+		down -> L[3][5]|
+		up -> L[3][7]),
+L[4][6] = (
+		moveleft-> L[3][6]| 
+		moveright-> L[5][6]| 
+		down -> L[4][5]|
+		up -> L[4][7]),
+L[5][6] = (
+		moveleft-> L[4][6]| 
+		moveright -> reachright -> L[5][6]|
+		down -> L[5][5]|
+		up -> L[5][7]),
+
+
+
+L[0][5] = (
+		moveright-> L[1][5]|
+		moveleft->reachleft->L[0][5]|
+		down  -> L[0][4]|
+		up -> L[0][6]),
+L[1][5] = (
+		moveleft-> L[0][5]| 
+		moveright-> L[2][5]| 
+		down -> L[1][4]|
+		up -> L[1][6]),
+L[2][5] = (
+		moveleft-> L[1][5]| 
+		moveright -> L[3][5]|
+		down-> L[2][4]|
+		up -> L[2][6]),
+L[3][5] = (
+		moveright-> L[4][5]|
+		moveleft->L[2][5]|
+		down -> L[3][5]|
+		up -> L[3][6]),
+L[4][5] = (
+		moveleft-> L[3][5]| 
+		moveright-> L[5][5]| 
+		down -> L[4][4]|
+		up -> L[4][6]),
+L[5][5] = (
+		moveleft-> L[4][5]| 
+		moveright -> reachright -> L[5][5]|
+		down -> L[5][4]|
+		up -> L[5][6]),
+
+
+L[0][4] = (
+		moveright-> L[1][4]|
+		moveleft->reachleft->L[0][4]|
+		down  -> L[0][3]|
+		up -> L[0][5]),
+L[1][4] = (
+		moveleft-> L[0][4]| 
+		moveright-> L[2][4]| 
+		down -> L[1][3]|
+		up -> L[1][5]),
+L[2][4] = (
+		moveleft-> L[1][4]| 
+		moveright -> L[3][4]|
+		down-> L[2][3]|
+		up -> L[2][5]),
+L[3][4] = (
+		moveright-> L[4][4]|
+		moveleft->L[2][4]|
+		down -> L[3][3]|
+		up -> L[3][5]),
+L[4][4] = (
+		moveleft-> L[3][4]| 
+		moveright-> L[5][4]| 
+		down -> L[4][3]|
+		up -> L[4][5]),
+L[5][4] = (
+		moveleft-> L[4][4]| 
+		moveright -> reachright -> L[5][4]|
+		down -> L[5][3]|
+		up -> L[5][5]),
+
+
+L[0][3] = (
+		moveright-> L[1][3]|
+		moveleft->reachleft->L[0][3]|
+		down  -> L[0][2]|
+		up -> L[0][4]),
+L[1][3] = (
+		moveleft-> L[0][3]| 
+		moveright-> L[2][3]| 
+		down -> L[1][2]|
+		up -> L[1][4]),
+L[2][3] = (
+		moveleft-> L[1][3]| 
+		moveright -> L[3][3]|
+		down-> L[2][2]|
+		up -> L[2][4]),
+L[3][3] = (
+		moveright-> L[4][3]|
+		moveleft->L[2][3]|
+		down -> L[3][2]|
+		up -> L[3][4]),
+L[4][3] = (
+		moveleft-> L[3][3]| 
+		moveright-> L[5][3]| 
+		down -> L[4][2]|
+		up -> L[4][4]),
+L[5][3] = (
+		moveleft-> L[4][3]| 
+		moveright -> reachright -> L[5][3]|
+		down -> L[5][2]|
+		up -> L[5][4]),
+
+
+L[0][2] = (
+		moveright-> L[1][2]|
+		moveleft->reachleft->L[0][2]|
+		down  -> L[0][1]|
+		up -> L[0][3]),
+L[1][2] = (
+		moveleft-> L[0][2]| 
+		moveright-> L[2][2]| 
+		down -> L[1][1]|
+		up -> L[1][3]),
+L[2][2] = (
+		moveleft-> L[1][2]| 
+		moveright -> L[3][2]|
+		down-> L[2][1]|
+		up -> L[2][3]),
+L[3][2] = (
+		moveright-> L[4][2]|
+		moveleft->L[2][2]|
+		down -> L[3][1]|
+		up -> L[3][3]),
+L[4][2] = (
+		moveleft-> L[3][2]| 
+		moveright-> L[5][2]| 
+		down -> L[4][1]|
+		up -> L[4][3]),
+L[5][2] = (
+		moveleft-> L[4][2]| 
+		moveright -> reachright -> L[5][2]|
+		down -> L[5][1]|
+		up -> L[5][3]),
+
+
+L[0][1] = (
+		moveright-> L[1][1]|
+		moveleft->reachleft->L[0][1]|
+		down  -> L[0][0]|
+		up -> L[0][2]),
+L[1][1] = (
+		moveleft-> L[0][1]| 
+		moveright-> L[2][1]| 
+		down -> L[1][0]|
+		up -> L[1][2]),
+L[2][1] = (
+		moveleft-> L[1][1]| 
+		moveright -> L[3][1]|
+		down-> L[2][0]|
+		up -> L[2][2]),
+L[3][1] = (
+		moveright-> L[4][1]|
+		moveleft->L[2][1]|
+		down -> L[3][0]|
+		up -> L[3][2]),
+L[4][1] = (
+		moveleft-> L[3][1]| 
+		moveright-> L[5][1]| 
+		down -> L[4][0]|
+		up -> L[4][2]),
+L[5][1] = (
+		moveleft-> L[4][1]| 
+		moveright -> reachright -> L[5][1]|
+		down -> L[5][0]|
+		up -> L[5][2]),
+
+
+
+L[0][0] = (
+		moveright-> L[1][0]|
+		moveleft->reachleft->L[0][0]|
+		outstair -> FLOOR|
+		up -> L[0][1]),
+L[1][0] = (
+		moveleft-> L[0][0]| 
+		moveright-> L[2][0]| 
+		outstair -> FLOOR|
+		up -> L[1][1]),
+L[2][0] = (
+		moveleft-> L[1][0]| 
+		moveright -> L[3][0]|
+		outstair -> FLOOR|
+		up -> L[2][1]),
+L[3][0] = (
+		moveright-> L[4][0]|
+		moveleft->L[2][0]|
+		outstair -> FLOOR|
+		up -> L[3][1]),
+L[4][0] = (
+		moveleft-> L[3][0]| 
+		moveright-> L[5][0]| 
+		outstair -> FLOOR|
+		up -> L[4][1]),
+L[5][0] = (
+		moveleft-> L[4][0]| 
+		moveright -> reachright -> L[5][0]|
+		outstair -> FLOOR|
+		up -> L[5][1]),
+FLOOR = (enterstair -> stop[0][11]-> L[0][11]).
+
+
+
+//fluent for floor
+fluent Change = <movefront,{FloorControllable}\{movefront}>
+fluent RIGHTF = <reachrightf,moveleftf>
+fluent LEFTF = <reachleftf,moverightf>
+fluent MoveRightF = <moverightf, reachrightf>
+fluent MoveLeftF = <moveleftf, reachleftf>
+fluent CLEAN_RIGHTF = <reachrightf,{movefront}>
+fluent CLEAN_LEFTF = <reachleftf,{movefront}>
+fluent EnterF = <floorinit, {FloorControllable}\{floorinit}>
+fluent InvalidF = <moveback, {FloorControllable}\{moveback}>
+
+
+//assertion for floor
+
+assert ENTERF = EnterF
+assert CHANGELINE = Change
+assert CHANGEF = (Change||EnterF)
+assert SWEEP_COMPLETEF = (CLEAN_RIGHTF && CLEAN_LEFTF)
+assert SWEEP_RIGHTF = CLEAN_RIGHTF
+assert SWEEP_LEFTF = CLEAN_LEFTF
+
+ 
+FLOOR = (enterstair -> STAIRF |floorinit -> LEFTSIDEF),
+STAIRF = (outstair -> FLOORINIT),
+FLOORINIT = (floorinit -> LEFTSIDEF),
+LEFTSIDEF = (moverightf-> (achievef -> MIDDLEF|reachrightf -> RIGHTSIDEF)|
+			moveleftf -> reachleftf -> LEFTSIDEF|
+			movefront ->count-> LEFTSIDEF|
+			moveback -> LEFTSIDEF|
+			countlimit ->enterstair -> STAIRF),
+MIDDLEF =(moverightf->(achievef->MIDDLEF|reachrightf -> RIGHTSIDEF)|
+			moveleftf ->(achievef ->MIDDLEF|reachleftf -> LEFTSIDEF)|
+			movefront -> MIDDLEF|
+			moveback -> MIDDLEF),
+RIGHTSIDEF = (moveleftf -> (achievef ->MIDDLEF|reachleftf -> LEFTSIDEF)|
+			moverightf -> reachrightf -> RIGHTSIDEF|
+			movefront ->count -> RIGHTSIDEF|
+			moveback -> RIGHTSIDEF|
+			countlimit ->enterstair -> STAIRF).
+
+const MaxTime = 6
+range Times = 0..MaxTime-1
+
+//—x‚èê‚Ì´‘|ƒJƒEƒ“ƒ^
+COUNTFLOOR = COUNTFLOOR[0],
+COUNTFLOOR[i:Times] = (count -> COUNTFLOOR[i+1]|
+                 	enterstair -> COUNTFLOOR),
+COUNTFLOOR[MaxTime] = (countlimit->enterstair ->COUNTFLOOR),
+COUNTFLOOR[MaxTime+1] = ERROR.
+
+//safety goal for FLOOR
+ltl_property DuplicateChangeLine = [](CHANGEF -> X !CHANGEF)
+//ltl_property CLEAN_FLOOR = [](RIGHTF ->X !CHANGELINE)
+ltl_property CLEAN_FLOOR = [](MoveRightF ->(!CHANGELINE W SWEEP_LEFTF))
+ltl_property ChangeLine = [](SWEEP_COMPLETEF -> X CHANGELINE)
+ltl_property ConstRightF = [](MoveRightF -> (!MoveLeftF W RIGHTF))
+ltl_property ConstLeftF = [](MoveLeftF -> (!MoveRightF W LEFTF))
+ltl_property RLF = [](MoveRightF -> (!LEFTF W MoveLeftF))
+ltl_property RRF = [](MoveLeftF -> (!RIGHTF W MoveRightF))
+ltl_property INVALIDF  = [](!InvalidF)
+
+
+
+controllerSpec SPECIFICATION2 = {
+	safety = {DuplicateChangeLine,CLEAN_FLOOR,ChangeLine,ConstRightF,ConstLeftF,RLF,RRF,INVALIDF}
+	assumption = {CHANGELINE}
+	liveness = {SWEEP_RIGHTF,SWEEP_LEFTF}
+	controllable = {FloorControllable}
+}
+controller ||FLOOR_SWEEP = (FLOOR)~{SPECIFICATION2}.
+
+
+
+controllerSpec SPECIFICATION = {
+	safety = {}
+	assumption ={DOWN}
+	liveness = {SWEEP_RIGHT, SWEEP_LEFT}
+	controllable = {Controllable}
+}
+controller ||C = (L1)~{SPECIFICATION}.
+
+
+
+
+||SWEEP = (C||FLOOR_SWEEP||COUNTFLOOR).

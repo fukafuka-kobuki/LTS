@@ -1,0 +1,35 @@
+S1 = (c1 -> S4 |c2 -> S3 |c3 -> S2|c4 -> S6),
+S2 = (c3 -> S7 | l -> S2),
+S3 = ( a -> S3),
+S4 = ( a -> S5),
+S5 = (g1 -> S4 |g2 -> S4),
+S6 = ( w -> S6),
+S7 = ( a -> S2).
+||Env = (S1).
+
+set Assumption = {a}
+set GoalAction = {g1,g2}
+set Action = {c1, c2, c3, c4}
+set BadAction = {w}
+set ElseAction = {l}
+set ValidAction = {g1,g2,c1,c2,c3,c4,a,l}
+set AllAction = {c1,c2,c3,c4,g1,g2}
+
+fluent BADACTION = <w, ValidAction>
+fluent G = <GoalAction, Action>
+fluent AS = <Assumption, GoalAction>
+assert ASSUMPTION = AS
+assert GOAL = G
+
+ltl_property PREVENT = []!(BADACTION)
+
+
+
+controllerSpec SPECIFICATION = {
+	safety = {PREVENT}
+	assumption ={ASSUMPTION}
+	liveness = {GOAL}
+	controllable = {AllAction}
+}
+
+controller ||C = (S1)~{SPECIFICATION}.

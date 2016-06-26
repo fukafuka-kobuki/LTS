@@ -1,0 +1,152 @@
+const Sxmax = 1
+const Symax = 1
+const AgentNum = 2
+const StationNum = 1
+const DockNum = 2
+
+range Sx = 0..Sxmax
+range Sy = 0..Symax
+range Agent = 0..AgentNum
+range Station = 0..StationNum
+range Dock = 0..DockNum
+
+set Controllable = {start,[Agent].moveShelf[Sx][Sy],[Agent].moveDock[Dock],[Agent].moveStation[Station], [Agent].pick, [Agent].put}
+set Monitorable = {[Agent].arriveShelf[Sx][Sy],[Agent].arriveDock[Dock],[Agent].arriveStation[Station], [Agent].picksucc, [Agent].pickfail, [Agent].putsucc, [Agent].putfail}
+
+
+
+AGENT1 = (start -> START),
+START = ([0].arriveDock[d:Dock]->DOCK[d][0]),
+DOCK[dc:Dock][a:Agent] = (
+	[0].moveDock[d:Dock] -> [0].arriveDock[da:Dock]-> DOCK[da][0]
+	|[0].moveShelf[sx:Sx][sy:Sy] ->[0].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][0]
+	|[0].moveStation[st:Station] -> [0].arriveStation[sta:Station] -> STATION[sta][0] 	
+	|[0].pick->
+		([0].picksucc-> DOCK[dc][0]
+		|[0].pickfail->DOCK[dc][0]
+		)
+	|[0].put->
+		([0].putsucc-> DOCK[dc][0]
+		|[0].putfail->DOCK[dc][0]
+		)
+),
+SHELF[sxc:Sx][syc:Sy][a:Agent]=(
+	[0].moveDock[d:Dock] -> [0].arriveDock[da:Dock]-> DOCK[da][0]
+	|[0].moveShelf[sx:Sx][sy:Sy] ->[0].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][0]
+	|[0].moveStation[st:Station] -> [0].arriveStation[sta:Station] -> STATION[sta][0] 	
+	|[0].pick->
+		([0].picksucc-> SHELF[sxc][syc][0]
+		|[0].pickfail->SHELF[sxc][syc][0]
+		)
+	|[0].put->
+		([0].putsucc->SHELF[sxc][syc][0]
+		|[0].putfail->SHELF[sxc][syc][0]
+		)
+),
+STATION[stc:Station][a:Agent]=(
+	[0].moveDock[d:Dock] -> [0].arriveDock[da:Dock]-> DOCK[da][0]
+	|[0].moveShelf[sx:Sx][sy:Sy] ->[0].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][0]
+	|[0].moveStation[st:Station] -> [0].arriveStation[sta:Station] -> STATION[sta][0] 	
+	|[0].pick->
+		([0].picksucc-> STATION[stc][0]
+		|[0].pickfail->STATION[stc][0]
+		)
+	|[0].put->
+		([0].putsucc-> STATION[stc][0]
+		|[0].putfail->STATION[stc][0]
+		)
+).
+
+   
+
+
+AGENT2 = (start -> START),
+START = ([1].arriveDock[d:Dock]->DOCK[d][1]),
+DOCK[dc:Dock][a:Agent] = (
+	[1].moveDock[d:Dock] -> [1].arriveDock[da:Dock]-> DOCK[da][1]
+	|[1].moveShelf[sx:Sx][sy:Sy] ->[1].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][1]
+	|[1].moveStation[st:Station] -> [1].arriveStation[sta:Station] -> STATION[sta][1] 	
+	|[1].pick->
+		([1].picksucc-> DOCK[dc][1]
+		|[1].pickfail->DOCK[dc][1]
+		)
+	|[1].put->
+		([1].putsucc-> DOCK[dc][1]
+		|[1].putfail->DOCK[dc][1]
+		)
+),
+SHELF[sxc:Sx][syc:Sy][a:Agent]=(
+	[1].moveDock[d:Dock] -> [1].arriveDock[da:Dock]-> DOCK[da][1]
+	|[1].moveShelf[sx:Sx][sy:Sy] ->[1].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][1]
+	|[1].moveStation[st:Station] -> [1].arriveStation[sta:Station] -> STATION[sta][1] 	
+	|[1].pick->
+		([1].picksucc-> SHELF[sxc][syc][1]
+		|[1].pickfail->SHELF[sxc][syc][1]
+		)
+	|[1].put->
+		([1].putsucc->SHELF[sxc][syc][1]
+		|[1].putfail->SHELF[sxc][syc][1]
+		)
+),
+STATION[stc:Station][a:Agent]=(
+	[1].moveDock[d:Dock] -> [1].arriveDock[da:Dock]-> DOCK[da][1]
+	|[1].moveShelf[sx:Sx][sy:Sy] ->[1].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][1]
+	|[1].moveStation[st:Station] -> [1].arriveStation[sta:Station] -> STATION[sta][1] 	
+	|[1].pick->
+		([1].picksucc-> STATION[stc][1]
+		|[1].pickfail->STATION[stc][1]
+		)
+	|[1].put->
+		([1].putsucc-> STATION[stc][1]
+		|[1].putfail->STATION[stc][1]
+		)
+).
+ 
+
+
+AGENT3 = (start -> START),
+START = ([2].arriveDock[d:Dock]->DOCK[d][2]),
+DOCK[dc:Dock][a:Agent] = (
+	[2].moveDock[d:Dock] -> [2].arriveDock[da:Dock]-> DOCK[da][2]
+	|[2].moveShelf[sx:Sx][sy:Sy] ->[2].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][2]
+	|[2].moveStation[st:Station] -> [2].arriveStation[sta:Station] -> STATION[sta][2] 	
+	|[2].pick->
+		([2].picksucc-> DOCK[dc][2]
+		|[2].pickfail->DOCK[dc][2]
+		)
+	|[2].put->
+		([2].putsucc-> DOCK[dc][2]
+		|[2].putfail->DOCK[dc][2]
+		)
+),
+SHELF[sxc:Sx][syc:Sy][a:Agent]=(
+	[2].moveDock[d:Dock] -> [2].arriveDock[da:Dock]-> DOCK[da][2]
+	|[2].moveShelf[sx:Sx][sy:Sy] ->[2].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][2]
+	|[2].moveStation[st:Station] -> [2].arriveStation[sta:Station] -> STATION[sta][2] 	
+	|[2].pick->
+		([2].picksucc-> SHELF[sxc][syc][2]
+		|[2].pickfail->SHELF[sxc][syc][2]
+		)
+	|[2].put->
+		([2].putsucc->SHELF[sxc][syc][2]
+		|[2].putfail->SHELF[sxc][syc][2]
+		)
+),
+STATION[stc:Station][a:Agent]=(
+	[2].moveDock[d:Dock] -> [2].arriveDock[da:Dock]-> DOCK[da][2]
+	|[2].moveShelf[sx:Sx][sy:Sy] ->[2].arriveShelf[sxa:Sx][sya:Sy] ->SHELF[sxa][sya][2]
+	|[2].moveStation[st:Station] -> [2].arriveStation[sta:Station] -> STATION[sta][2] 	
+	|[2].pick->
+		([2].picksucc-> STATION[stc][2]
+		|[2].pickfail->STATION[stc][2]
+		)
+	|[2].put->
+		([2].putsucc-> STATION[stc][2]
+		|[2].putfail->STATION[stc][2]
+		)
+).
+ 
+
+
+||ALL = (AGENT1||AGENT2).
+   

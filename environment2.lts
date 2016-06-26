@@ -1,0 +1,34 @@
+L0 = (moveRight -> L1), 				 
+L1 = (moveRight -> L2),
+L2 = (moveUp -> L3),
+L3 = (moveUp -> L4),
+L4 = (sweep -> L4).
+||Env = (L0).
+
+
+
+set AllAction = {moveUp, moveRight, sweep}
+
+
+fluent Goal = <sweep, AllAction\{sweep}>
+
+
+assert GOAL = Goal
+
+
+controllerSpec SPECIFICATION = {
+//	safety = {PREVENT,GOAL_ASSIST1,GOAL_ASSIST2,GOAL_ASSIST3}
+//	assumption ={ASSUMPTION}
+	liveness = {GOAL}
+	controllable = {AllAction}
+}
+
+controller ||C = (L0)~{SPECIFICATION}.
+
+
+fluent INVALID_ACTION = <out, AllAction\> 
+fluent TAKEOFF = <takeoff, land>
+fluent LAND = <land, takeoff>
+
+assert ASSUMPTION = TAKEOFF
+assert GOAL = LAND

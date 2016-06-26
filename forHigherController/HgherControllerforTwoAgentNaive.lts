@@ -1,0 +1,182 @@
+const MaxX = 2
+const MaxY = 1
+const MaxTime = 10
+
+const RestX = MaxX + 1
+const RestY = MaxY + 1
+
+const AgentNum = 1
+
+range X = 0..MaxX
+range Y = 0..MaxY
+range Times = 0..MaxTime
+range A = 0..AgentNum
+
+
+set Direction = {e,w,n,s}
+set MoveAction0 = {[0].move[Direction]}
+
+set Controllable0  = {MoveAction0, [0].wait, [0].pick, [0].put, start, end}
+
+set MoveAction1 = {[1].move[Direction]}
+set Controllable1  = {MoveAction1, [1].wait, [1].pick, [1].put, start, end}
+
+set ArriveAction = {[A].arrive[X][Y]}
+set Controllable = {Controllable0, Controllable1, ArriveAction}
+
+//set ArriveAction = { arriveInduction[Y], arrivePicking[X]}
+
+//COUNT=COUNT[0],
+//COUNT[i:Times]=(
+//       when(i==MaxTime)arrive[X][Y] -> ERROR
+//        |when(i!=MaxTime)arrive[X][Y]->COUNT[i+1]
+//        | ArriveAction->COUNT
+//).
+
+ENVforUPDATE = (start -> WAITING),
+WAITING = (changeArea -> REMOVING|
+			getRobot -> GETTING),
+REMOVING = (removeRobot -> startNewSpec -> WAITING),
+GETTING = (acceptRobot -> startNewSpec -> WAITING).
+
+
+START(I = 0) = (start -> INITIAL),
+INITIAL = (when (I == 0) [I].arrive[1][1] -> STORAGE[1][1]
+			|when (I ==1) [I].arrive[1][0] -> STORAGE[1][0]),
+STORAGE[x:X][y:Y] = (when (x < MaxX) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
+					|when (x == MaxX) [I].move['e] -> [I].arriveShipping[y]->[I].wait-> SHIPPING[y]
+					|when (x == 0) [I].move['w] -> [I].arriveInduction[y]->[I].wait-> INDUCTION[y]
+					|when (y < MaxY) [I].move['s] -> [I].arrive[x][y+1]-> STORAGE[x][y+1]
+					|when (y > 0) [I].move['n] -> [I].arrive[x][y-1]->STORAGE[x][y-1]
+					|when (y == MaxY) [I].move['s] -> [I].arriveReplenish[x]->[I].wait-> REPLENISH[x]
+					|when (y == 0) [I].move['n] -> [I].arrivePicking[x]->[I].wait-> PICKING[x]
+					|[I].pick -> [I].picksucc -> STORAGE[x][y]
+					|[I].put -> [I].putsucc -> STORAGE[x][y]
+					|end ->reset ->START
+),
+SHIPPING[y:Y] = ([I].move['w] -> [I].arrive[MaxX][y]-> STORAGE[MaxX][y]
+				|end ->reset -> START
+),
+REPLENISH[x:X] =([I].move['n] -> [I].arrive[x][MaxY]-> STORAGE[x][MaxY]
+				|end ->reset -> START
+), 
+INDUCTION[y:Y]=([I].move['e] -> [I].arrive[0][y]-> STORAGE[0][y]
+				|end ->reset -> START
+),
+PICKING[x:X]=([I].move['s] -> [I].arrive[x][0]-> STORAGE[x][0]
+				|end ->reset -> start->START
+).
+
+||ALL(N = AgentNum)=
+	forall [i: 0..N-1]
+ 	(START(i)).
+   
+
+//fluent Definition
+//about Arrive
+fluent ArriveStorage[a:A][x:X][y:Y] = <[a].arrive[x][y], {[a].move[Direction], reset}>//
+fluent ArriveInduction[a:A][y:Y] = <[a].arriveInduction[y], {[a].move['e],reset}>
+fluent ArrivePicking[a:A][x:X] = <[a].arrivePicking[x], {[a].move['s],reset}>
+fluent ArriveShipping[a:A][y:Y] = <[a].arriveShipping[y], {[a].move['w],reset}>
+fluent ArriveReplenish[a:A][x:X] = <[a].arriveReplenish[x], {[a].move['n],reset}>
+
+
+
+fluent Finish = <end, reset>
+fluent Start = <start, {end,reset}>
+
+//about pick
+fluent Pick[a:A] = <[a].pick,{[a].put,reset}>//
+fluent Put[a:A] = <[a].put,{[a].pick,reset}>//
+
+//requirement always be needed (not change)
+ltl_property RePICK0 = []((Pick[0] ->X! [0].pick)) //二重pick
+ltl_property RePUT0 = []((Put[0] -> X! [0].put))	//二重put 
+
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property ImidiatePick0 = [](ArriveStorage[0][1][1]-> X Pick[0])
+ltl_property InvalidPUT0 = [](!Put[0])
+ltl_property InvalidEnd0 = [](!Finish W Goal04)
+
+assert StartTask = Start
+assert Goal01 = (ArriveStorage[0][1][1] && Pick[0])
+assert Goal02 = (ArriveInduction[0][1])
+assert Goal03 = (ArrivePicking[0][2])
+assert Goal04 = (ArriveShipping[0][1])
+
+controllerSpec KIVASPEC0 = {
+	safety = {	
+				InvalidEnd0 ,
+				RePICK0,
+				RePUT0,
+				InvalidPUT0,
+				}
+	assumption = {StartTask}
+	liveness = {Goal01, Goal02, Goal03, Goal04}
+	controllable = {Controllable0}
+}
+controller ||KivaCONT0 = (START(0))~{KIVASPEC0}.
+
+
+
+//requirement always be needed (not change)
+ltl_property RePICK1 = []((Pick[1] ->X! [1].pick)) //二重pick
+ltl_property RePUT1 = []((Put[1] -> X! [1].put))	//二重put 
+
+//場合によってはいらない場合のある要求
+//requirement which is needed when robot must pick pod
+ltl_property InvalidPUT1 = [](!Put[1])
+ltl_property InvalidEnd1 = [](!Finish W Goal14)
+
+assert Goal11 = (ArriveStorage[1][1][0] && Pick[1])
+assert Goal12 = (ArriveInduction[1][1])
+assert Goal13 = (ArrivePicking[1][0])
+assert Goal14 = (ArriveShipping[1][1])
+
+
+controllerSpec KIVASPEC1 = {
+	safety = {	
+				InvalidEnd1,
+				RePICK1,
+				RePUT1,
+				InvalidPUT1,
+//				STATIONALONE,
+				}
+	assumption = {StartTask}
+	liveness = {Goal11, Goal12, Goal13,Goal14}
+	controllable = {Controllable1}
+}
+controller ||KivaCONT1 = (START(1))~{KIVASPEC1}.
+
+||ALLCONT = (KivaCONT0 || KivaCONT1).
+
+
+//assert SAME_STORAGE[x:X][y:Y] = (ArriveStorage[0][x][y] && ArriveStorage[1][x][y])
+
+//assert SameStorage = ArriveStorage[A][][]
+
+//ltl_property StopConflict =[]((ArriveStorage[0][0][0] -> ! ArriveStorage[1][0][0]))
+ltl_property StopConflict1 = [] ([0].move[Direction] -> X !<>(ArriveStorage[0][0][0] && ArriveStorage[1][0][0])) 
+//ltl_property StopConflict2 = ([]!(ArriveStorage[0][0][1] && ArriveStorage[1][0][1]))
+///ltl_property StopConflict3 = ([]!(ArriveStorage[0][1][0] && ArriveStorage[1][1][0]))
+//ltl_property StopConflict4 = ([]!(ArriveStorage[0][1][1] && ArriveStorage[1][1][1]))
+//ltl_property StopConflict5 = ([]!(ArriveStorage[0][2][0] && ArriveStorage[1][2][0]))
+//ltl_property StopConflict6 = ([]!(ArriveStorage[0][2][1] && ArriveStorage[1][2][1]))
+
+controllerSpec ALLSPEC = {
+	safety = {
+		StopConflict1,
+//		StopConflict2,
+//		StopConflict3,
+//		StopConflict4,
+//		StopConflict5,
+//		StopConflict6
+	}
+	controllable = {Controllable}
+}
+controller ||AllManager = (ALLCONT)~{ALLSPEC}.
+
+

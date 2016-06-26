@@ -1,0 +1,230 @@
+
+const MaxTime = 3
+range Times = 0..MaxTime
+
+
+//äKíiÇÃíiêî
+const StairNum = 4
+range StairRange = 0..StairNum-1
+
+
+set MoveStair = {enterstair,achievef}
+set Controllable = {moveright, moveleft, down,MoveStair}
+set CountAction = {count}
+//set Controllable1 = {floorinit,changeline,moveleftf,moverightf,MoveStair}
+set Actions = {Controllable,outstair}
+
+
+fluent MOVERIGHT = <moveright, achieve>
+fluent MOVELEFT = <moveleft, achieve>
+fluent Down = <down,achieve>
+
+fluent CHANGELINE = <changeline,achievef>
+fluent MOVERIGHTF = <moverightf, achievef>
+fluent MOVELEFTF = <moveleftf, achievef>
+
+fluent ENTERSTAIR = <enterstair,outstair>
+fluent OUTSTAIR = <outstair,enterstair>
+
+fluent FLOORINIT = <floorinit,outstair>
+
+assert MOVE_RIGHTF = MOVERIGHTF
+assert MOVE_LEFTF = MOVELEFTF
+assert CHANGE_LINE = CHANGELINE
+
+assert FLOOR_INIT = FLOORINIT
+assert ENTER_STAIR = ENTERSTAIR
+assert OUT_STAIR = OUTSTAIR
+assert MOVE_RIGHT = MOVERIGHT
+assert MOVE_LEFT = MOVELEFT
+assert DOWN = Down
+
+//ltl_property OUTSTAIR1 = [](ENTER_STAIR -> (<>OUTSTAIR))
+
+
+//äKíiÇÃä¬ã´ãLèq
+Stair = START,
+START = (enterstair->LEFTSIDE),
+LEFTSIDE = (moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->(counts-> achieve -> RIGHTSIDE|countlimits->outstair ->floorinit ->START)
+),
+RIGHTSIDE =(moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->(counts->achieve-> RIGHTSIDE|countlimits->outstair-> floorinit-> START)
+).
+
+const X_MAX = 3
+const Y_MAX = 2
+range X = 0..X_MAX
+range Y = 2..Y_MAX
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1],  jump[X_MAX+1][Y], jump[X][Y_MAX+1], jump[-1][Y], jump[X][-1]}
+set JumpAction = {jump[0][2],jump[1][2],jump[2][2],jump[3][2]}
+set FlagAction = {stop[0][2],stop[1][2],stop[2][2],stop[3][2]}
+set MoveAction = {move[0][2],move[1][2],move[2][2],move[3][2],JumpAction,FlagAction, Out}
+set FloorControllable = {enterstair,outstair,floorinit, navigate,MoveAction, Out}
+
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+fluent LOCATION[x:X][y:Y]=<{stop[x][y]},{FlagAction}\{stop[x][y]}>
+fluent JUMP[x:X][y:Y] = <jump[x][y],MoveAction\{jump[x][y]}>
+fluent MOVE[x:X][y:Y] = <move[x][y],MoveAction\{move[x][y]}>
+fluent NAVIGATION = <navigate, end>
+
+fluent CLEANACHIEVE[x:X][y:Y]=<stop[x][y],floorinit>
+assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2]&&CLEANACHIEVE[1][2]&&CLEANACHIEVE[2][2]&&CLEANACHIEVE[3][2])
+//assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2])
+
+//assert ENTER_STAIR2 = LOCATION[]
+
+
+
+
+
+assert MISS_JUMP36 =(LOCATION[0][2]&&JUMP[1][2])
+assert MISS_JUMP63 =(LOCATION[1][2]&&JUMP[0][2])
+assert MISS_JUMP69 =(LOCATION[1][2]&&JUMP[2][2])
+assert MISS_JUMP96 =(LOCATION[2][2]&&JUMP[1][2])
+assert MISS_JUMP912 =(LOCATION[2][2]&&JUMP[3][2])
+assert MISS_JUMP129 =(LOCATION[3][2]&&JUMP[2][2])
+
+
+ltl_property INVALID_MOVE36 = []!(MISS_JUMP36)
+ltl_property INVALID_MOVE63 = []!(MISS_JUMP63)
+ltl_property INVALID_MOVE69 = []!(MISS_JUMP69)
+ltl_property INVALID_MOVE96 = []!(MISS_JUMP96)
+ltl_property INVALID_MOVE912 = []!(MISS_JUMP912)
+ltl_property INVALID_MOVE129 = []!(MISS_JUMP129)
+
+
+fluent OUT =<Out , {FloorControllable}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT)
+
+
+
+Floor = (floorinit ->START|enterstair->STAIR),
+START = (stop[0][2]->L[0][2]),
+L[0][2] = (navigate ->end-> L[0][2]|
+		move[1][2]->stop[1][2]-> L[1][2]| 
+		jump[1][2]->stop[1][2]-> L[1][2]| 
+		enterstair -> STAIR
+),
+L[1][2] = (navigate ->end-> L[1][2]|
+		move[0][2]->stop[0][2]-> L[0][2]| 
+		jump[0][2]->stop[0][2]-> L[0][2]| 
+		move[2][2]->stop[2][2]-> L[2][2]| 
+		jump[2][2]->stop[2][2]-> L[2][2]| 
+		enterstair -> STAIR
+),
+L[2][2] = (navigate ->end-> L[2][2]|
+		move[1][2]->stop[1][2]-> L[1][2]| 
+		jump[1][2]->stop[1][2]-> L[1][2]| 
+		move[3][2]->stop[3][2]-> L[3][2]| 
+		jump[3][2]->stop[3][2]-> L[3][2]| 
+		enterstair -> STAIR
+), 
+L[3][2] = (navigate ->end-> L[3][2]|
+		move[2][2]->stop[2][2]-> L[2][2]| 
+		jump[2][2]->stop[2][2]-> L[2][2]|
+		enterstair -> STAIR
+), 
+OUT_CONTROLL = (out -> OUT_CONTROLL),
+STAIR = (outstair -> floorinit -> START).
+
+
+
+
+controllerSpec SWEEPSPEC = {
+	safety = {INVALID_ACTION,INVALID_MOVE36,INVALID_MOVE63,INVALID_MOVE69,INVALID_MOVE96,INVALID_MOVE912,INVALID_MOVE129}
+	assumption ={FLOOR_INIT}
+	liveness = {CLEAN_ACHIEVE,ENTER_STAIR}
+	controllable = {FloorControllable}
+}
+controller ||FLOORSWEEP = (Floor)~{SWEEPSPEC}.
+
+
+
+
+
+
+controllerSpec SPECIFICATION = {
+	safety = {}
+	assumption = {ENTER_STAIR}
+	liveness = {MOVE_RIGHT,MOVE_LEFT,DOWN}
+//	liveness = {OUT_STAIR}
+	controllable = {Controllable}
+}
+controller ||StairSweep = (Stair)~{SPECIFICATION}.
+
+
+
+
+COUNT = COUNT[0],
+COUNT[i:Times] = (count -> COUNT[i+1]
+                 |floorinit -> COUNT),
+COUNT[MaxTime+1] = ERROR.
+
+
+controllerSpec COUNTSPEC = {
+	assumption = {}
+	liveness = {}
+	controllable = {CountAction}
+}
+controller ||COUNTCONTROLL = (COUNT)~{COUNTSPEC}.
+
+
+
+//controllerSpec SPECIFICATION1 = {
+//	safety = {INVALID_ACTION,INVALID_MOVE12,INVALID_MOVE14,INVALID_MOVE21,INVALID_MOVE23,INVALID_MOVE25,INVALID_MOVE32,INVALID_MOVE36,INVALID_MOVE41,INVALID_MOVE45,INVALID_MOVE47,INVALID_MOVE52,INVALID_MOVE54,INVALID_MOVE56,INVALID_MOVE58,INVALID_MOVE63,INVALID_MOVE65,INVALID_MOVE69,INVALID_MOVE74,INVALID_MOVE78,INVALID_MOVE710,INVALID_MOVE87,INVALID_MOVE85,INVALID_MOVE89,INVALID_MOVE811,INVALID_MOVE96,INVALID_MOVE98,INVALID_MOVE912,INVALID_MOVE107,INVALID_MOVE1011,INVALID_MOVE1110,INVALID_MOVE118,INVALID_MOVE1112,INVALID_MOVE1211,INVALID_MOVE129}
+//	assumption ={}
+//	liveness = {CLEAN_ACHIEVE,ENTER_STAIR}
+//	controllable = {FloorControllable}
+//}
+//controller ||FloorSweep = (Floor)~{SPECIFICATION1}.
+
+
+
+
+//óxÇËèÍÇÃê¥ë|ÉJÉEÉìÉg
+COUNTSTAIR = COUNTSTAIR[0],
+COUNTSTAIR[i:StairRange] = (counts -> COUNTSTAIR[i+1]
+                 |outstair -> COUNTSTAIR),
+COUNTSTAIR[StairNum] = (countlimits->outstair ->COUNTSTAIR),
+COUNTSTAIR[StairNum+1] = ERROR.
+
+
+
+
+//äKíiê¥ë|Å®óxÇËèÍê¥ë|ÇÃéËèá
+INFLOOR = (enterstair->INSTAIR),
+INSTAIR = (outstair-> INFLOOR).
+
+controllerSpec PROCEDURE = {
+	safety = {}
+	assumption ={ENTER_STAIR}
+	liveness = {OUT_STAIR}
+	controllable = {MoveStair}
+}
+controller ||PROCEDURECONTROL = (INFLOOR)~{PROCEDURE}.
+
+
+||SWEEP = (FLOORSWEEP||StairSweep||COUNTSTAIR||PROCEDURECONTROL ).
+
+
+controllerSpec SPECIFICATION2 = {
+	safety = {}
+	assumption ={}
+	liveness = {}
+	controllable = {MoveStair}
+}
+controller ||Whole = (SWEEP)~{SPECIFICATION2}.
+
+
+
+
+
+
+
+

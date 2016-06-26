@@ -1,0 +1,226 @@
+const X_MAX = 3
+const Y_MAX = 2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1],  jump[X_MAX+1][Y], jump[X][Y_MAX+1], jump[-1][Y], jump[X][-1]}
+set JumpAction = {jump[0][0],jump[0][1],jump[0][2],jump[1][0],jump[1][1],jump[1][2],jump[2][0],jump[2][1],jump[2][2],jump[3][0],jump[3][1],jump[3][2]}
+set FlagAction = {stop[0][0],stop[0][1],stop[0][2],stop[1][0],stop[1][1],stop[1][2],stop[2][0],stop[2][1],stop[2][2],stop[3][0],stop[3][1],stop[3][2]}
+set MoveAction = {move[0][0],move[0][1],move[0][2],move[1][0],move[1][1],move[1][2],move[2][0],move[2][1],move[2][2],move[3][0],move[3][1],move[3][2],JumpAction,FlagAction, Out}
+set Controllable = {on,off, navigate,MoveAction, Out}
+set Actions ={Controllable, end, out}
+
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+fluent LOCATION[x:X][y:Y]=<{stop[x][y]},{FlagAction}\{stop[x][y]}>
+fluent JUMP[x:X][y:Y] = <jump[x][y],MoveAction\{jump[x][y]}>
+fluent MOVE[x:X][y:Y] = <move[x][y],MoveAction\{move[x][y]}>
+fluent NAVIGATION = <navigate, end>
+
+fluent CLEANACHIEVE[x:X][y:Y]=<{stop[x][y]},off>
+
+assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][0]&&CLEANACHIEVE[0][1]&&CLEANACHIEVE[0][2]&&CLEANACHIEVE[1][0]&&CLEANACHIEVE[1][1]&&CLEANACHIEVE[1][2]&&CLEANACHIEVE[2][0]&&CLEANACHIEVE[2][1]&&CLEANACHIEVE[2][2]&&CLEANACHIEVE[3][0]&&CLEANACHIEVE[3][1]&&CLEANACHIEVE[3][2])
+
+assert TURN_OFF = (LOCATION[0][0]&&OFF)
+assert TURN_ON = ON
+assert NAVIGATION_GOAL = (LOCATION[3][2]&&NAVIGATION)
+
+
+
+assert MISS_JUMP12 =(LOCATION[0][0]&&JUMP[0][1])
+assert MISS_JUMP14 =(LOCATION[0][0]&&JUMP[1][0])
+assert MISS_JUMP21 =(LOCATION[0][1]&&JUMP[0][0])
+assert MISS_JUMP23 =(LOCATION[0][1]&&JUMP[0][2])
+assert MISS_JUMP25 =(LOCATION[0][1]&&JUMP[1][1])
+assert MISS_JUMP32 =(LOCATION[0][2]&&JUMP[0][1])
+assert MISS_JUMP36 =(LOCATION[0][2]&&JUMP[1][2])
+assert MISS_JUMP41 =(LOCATION[1][0]&&JUMP[0][0])
+assert MISS_JUMP45 =(LOCATION[1][0]&&JUMP[1][1])
+assert MISS_JUMP47 =(LOCATION[1][0]&&JUMP[2][0])
+assert MISS_JUMP52 =(LOCATION[1][1]&&JUMP[0][1])
+assert MISS_JUMP54 =(LOCATION[1][1]&&JUMP[1][0])
+assert MISS_JUMP56 =(LOCATION[1][1]&&JUMP[1][2])
+assert MISS_JUMP58 =(LOCATION[1][1]&&JUMP[2][1])
+assert MISS_JUMP63 =(LOCATION[1][2]&&JUMP[0][2])
+assert MISS_JUMP65 =(LOCATION[1][2]&&JUMP[1][1])
+assert MISS_JUMP69 =(LOCATION[1][2]&&JUMP[2][2])
+assert MISS_JUMP74 =(LOCATION[2][0]&&JUMP[1][0])
+assert MISS_JUMP78 =(LOCATION[2][0]&&JUMP[2][1])
+assert MISS_JUMP710 =(LOCATION[2][0]&&JUMP[3][0])
+assert MISS_JUMP87 =(LOCATION[2][1]&&JUMP[2][0])
+assert MISS_JUMP85 =(LOCATION[2][1]&&JUMP[1][1])
+assert MISS_JUMP89 =(LOCATION[2][1]&&JUMP[2][2])
+assert MISS_JUMP811 =(LOCATION[2][1]&&JUMP[3][1])
+assert MISS_JUMP96 =(LOCATION[2][2]&&JUMP[1][2])
+assert MISS_JUMP98 =(LOCATION[2][2]&&JUMP[2][1])
+assert MISS_JUMP912 =(LOCATION[2][2]&&JUMP[3][2])
+assert MISS_JUMP107 =(LOCATION[3][0]&&JUMP[2][0])
+assert MISS_JUMP1011 =(LOCATION[3][0]&&JUMP[3][1])
+assert MISS_JUMP1110 =(LOCATION[3][1]&&JUMP[3][0])
+assert MISS_JUMP118 =(LOCATION[3][1]&&JUMP[2][1])
+assert MISS_JUMP1112 =(LOCATION[3][1]&&JUMP[3][2])
+assert MISS_JUMP1211 =(LOCATION[3][2]&&JUMP[3][1])
+assert MISS_JUMP129 =(LOCATION[3][2]&&JUMP[2][2])
+
+
+ltl_property INVALID_MOVE12 = []!(MISS_JUMP12)
+ltl_property INVALID_MOVE14 = []!(MISS_JUMP14)
+ltl_property INVALID_MOVE21 = []!(MISS_JUMP21)
+ltl_property INVALID_MOVE23 = []!(MISS_JUMP23)
+ltl_property INVALID_MOVE25 = []!(MISS_JUMP25)
+ltl_property INVALID_MOVE32 = []!(MISS_JUMP32)
+ltl_property INVALID_MOVE36 = []!(MISS_JUMP36)
+ltl_property INVALID_MOVE41 = []!(MISS_JUMP41)
+ltl_property INVALID_MOVE45 = []!(MISS_JUMP45)
+ltl_property INVALID_MOVE47 = []!(MISS_JUMP47)
+ltl_property INVALID_MOVE52 = []!(MISS_JUMP52)
+ltl_property INVALID_MOVE54 = []!(MISS_JUMP54)
+ltl_property INVALID_MOVE56 = []!(MISS_JUMP56)
+ltl_property INVALID_MOVE58 = []!(MISS_JUMP58)
+ltl_property INVALID_MOVE63 = []!(MISS_JUMP63)
+ltl_property INVALID_MOVE65 = []!(MISS_JUMP65)
+ltl_property INVALID_MOVE69 = []!(MISS_JUMP69)
+ltl_property INVALID_MOVE74 = []!(MISS_JUMP74)
+ltl_property INVALID_MOVE78 = []!(MISS_JUMP78)
+ltl_property INVALID_MOVE710 = []!(MISS_JUMP710)
+ltl_property INVALID_MOVE87 = []!(MISS_JUMP87)
+ltl_property INVALID_MOVE85 = []!(MISS_JUMP85)
+ltl_property INVALID_MOVE89 = []!(MISS_JUMP89)
+ltl_property INVALID_MOVE811 = []!(MISS_JUMP811)
+ltl_property INVALID_MOVE96 = []!(MISS_JUMP96)
+ltl_property INVALID_MOVE98 = []!(MISS_JUMP98)
+ltl_property INVALID_MOVE912 = []!(MISS_JUMP912)
+ltl_property INVALID_MOVE107 = []!(MISS_JUMP107)
+ltl_property INVALID_MOVE1011 = []!(MISS_JUMP1011)
+ltl_property INVALID_MOVE1110 = []!(MISS_JUMP1110)
+ltl_property INVALID_MOVE118 = []!(MISS_JUMP118)
+ltl_property INVALID_MOVE1112 = []!(MISS_JUMP1112)
+ltl_property INVALID_MOVE1211 = []!(MISS_JUMP1211)
+ltl_property INVALID_MOVE129 = []!(MISS_JUMP129)
+
+
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT)
+
+
+L1 = LEFTSIDE,
+LEFTSIDE = (on->stop[0][0]->L[0][0]),
+MOVERIGHT = (achieve -> RIGHTSIDE|
+		move[0][1]->stop[0][1]-> L[0][1]| 
+		jump[0][1]->stop[0][1]-> L[0][1]| 
+		move[1][0]->stop[1][0]-> L[1][0]| 
+		jump[1][0]->stop[1][0]-> L[1][0]| 
+		off -> START),
+RIGHTSIDE = ,
+MOVELEFT = ,
+
+L[0][1] = (navigate ->end-> L[0][1]|
+		move[0][0]->stop[0][0]-> L[0][0]| 
+		jump[0][0]->stop[0][0]-> L[0][0]| 
+		move[0][2]->stop[0][2]-> L[0][2]| 
+		jump[0][2]->stop[0][2]-> L[0][2]| 
+		move[1][1]->stop[1][1]-> L[1][1]| 
+		jump[1][1]->stop[1][1]-> L[1][1]| 
+		off -> START),
+
+L[0][2] = (navigate ->end-> L[0][2]|
+		move[0][1]->stop[0][1]-> L[0][1]| 
+		jump[0][1]->stop[0][1]-> L[0][1]| 
+		move[1][2]->stop[1][2]-> L[1][2]| 
+		jump[1][2]->stop[1][2]-> L[1][2]| 
+		off -> START),
+
+L[1][0] = (navigate ->end-> L[1][0]|
+		move[0][0]->stop[0][0]-> L[0][0]| 
+		jump[0][0]->stop[0][0]-> L[0][0]| 
+		move[1][1]->stop[1][1]-> L[1][1]| 
+		jump[1][1]->stop[1][1]-> L[1][1]| 
+		move[2][0]->stop[2][0]-> L[2][0]| 
+		jump[2][0]->stop[2][0]-> L[2][0]| 
+		off -> START),
+
+L[1][1] = (navigate ->end-> L[1][1]|
+		move[0][1]->stop[0][1]-> L[0][1]| 
+		jump[0][1]->stop[0][1]-> L[0][1]| 
+		move[1][0]->stop[1][0]-> L[1][0]| 
+		jump[1][0]->stop[1][0]-> L[1][0]| 
+		move[1][2]->stop[1][2]-> L[1][2]| 
+		jump[1][2]->stop[1][2]-> L[1][2]| 
+		move[2][1]->stop[2][1]-> L[2][1]| 
+		jump[2][1]->stop[2][1]-> L[2][1]| 
+		off -> START),
+
+L[1][2] = (navigate ->end-> L[1][2]|
+		move[0][2]->stop[0][2]-> L[0][2]| 
+		jump[0][2]->stop[0][2]-> L[0][2]| 
+		move[1][1]->stop[1][1]-> L[1][1]| 
+		jump[1][1]->stop[1][1]-> L[1][1]| 
+		move[2][2]->stop[2][2]-> L[2][2]| 
+		jump[2][2]->stop[2][2]-> L[2][2]| 
+		off -> START),
+
+L[2][0] = (navigate ->end-> L[2][0]|
+		move[1][0]->stop[1][0]-> L[1][0]| 
+		jump[1][0]->stop[1][0]-> L[1][0]| 
+		move[2][1]->stop[2][1]-> L[2][1]| 
+		jump[2][1]->stop[2][1]-> L[2][1]| 
+		move[3][0]->stop[3][0]-> L[3][0]| 
+		jump[3][0]->stop[3][0]-> L[3][0]| 
+		off -> START),
+
+L[2][1] = (navigate ->end-> L[2][1]|
+		move[2][0]->stop[2][0]-> L[2][0]| 
+		jump[2][0]->stop[2][0]-> L[2][0]| 
+		move[1][1]->stop[1][1]-> L[1][1]| 
+		jump[1][1]->stop[1][1]-> L[1][1]| 
+		move[2][2]->stop[2][2]-> L[2][2]| 
+		jump[2][2]->stop[2][2]-> L[2][2]| 
+		move[3][1]->stop[3][1]-> L[3][1]| 
+		jump[3][1]->stop[3][1]-> L[3][1]| 
+		off -> START),
+
+L[2][2] = (navigate ->end-> L[2][2]|
+		move[1][2]->stop[1][2]-> L[1][2]| 
+		jump[1][2]->stop[1][2]-> L[1][2]| 
+		move[2][1]->stop[2][1]-> L[2][1]| 
+		jump[2][1]->stop[2][1]-> L[2][1]| 
+		move[3][2]->stop[3][2]-> L[3][2]| 
+		jump[3][2]->stop[3][2]-> L[3][2]| 
+		off -> START),
+
+L[3][0] = (navigate ->end-> L[3][0]|
+		move[2][0]->stop[2][0]-> L[2][0]| 
+		jump[2][0]->stop[2][0]-> L[2][0]| 
+		move[3][1]->stop[3][1]-> L[3][1]| 
+		jump[3][1]->stop[3][1]-> L[3][1]| 
+		off -> START),
+
+L[3][1] = (navigate ->end-> L[3][1]|
+		move[3][0]->stop[3][0]-> L[3][0]| 
+		jump[3][0]->stop[3][0]-> L[3][0]| 
+		move[2][1]->stop[2][1]-> L[2][1]| 
+		jump[2][1]->stop[2][1]-> L[2][1]| 
+		move[3][2]->stop[3][2]-> L[3][2]| 
+		jump[3][2]->stop[3][2]-> L[3][2]| 
+		off -> START),
+
+L[3][2] = (navigate ->end-> L[3][2]|
+		move[3][1]->stop[3][1]-> L[3][1]| 
+		jump[3][1]->stop[3][1]-> L[3][1]| 
+		move[2][2]->stop[2][2]-> L[2][2]| 
+		jump[2][2]->stop[2][2]-> L[2][2]| 
+		off -> START),
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+
+
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION,INVALID_MOVE12,INVALID_MOVE14,INVALID_MOVE21,INVALID_MOVE23,INVALID_MOVE25,INVALID_MOVE32,INVALID_MOVE36,INVALID_MOVE41,INVALID_MOVE45,INVALID_MOVE47,INVALID_MOVE52,INVALID_MOVE54,INVALID_MOVE56,INVALID_MOVE58,INVALID_MOVE63,INVALID_MOVE65,INVALID_MOVE69,INVALID_MOVE74,INVALID_MOVE78,INVALID_MOVE710,INVALID_MOVE87,INVALID_MOVE85,INVALID_MOVE89,INVALID_MOVE811,INVALID_MOVE96,INVALID_MOVE98,INVALID_MOVE912,INVALID_MOVE107,INVALID_MOVE1011,INVALID_MOVE1110,INVALID_MOVE118,INVALID_MOVE1112,INVALID_MOVE1211,INVALID_MOVE129}
+	assumption ={TURN_ON}
+	liveness = {CLEAN_ACHIEVE,TURN_OFF}
+	controllable = {Controllable}
+}
+controller ||C = (L1)~{SPECIFICATION}.

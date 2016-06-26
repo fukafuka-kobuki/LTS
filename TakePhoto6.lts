@@ -1,0 +1,31 @@
+
+set Controllable = {on, moveright, moveleft, down}
+set Actions = {Controllable, achieve}
+
+
+fluent ON = <on, off>
+fluent MOVERIGHT = <moveright, achieve>
+fluent MOVELEFT = <moveleft, achieve>
+fluent Down = <down,achieve>
+
+assert MOVE_RIGHT = MOVERIGHT
+assert MOVE_LEFT = MOVELEFT
+assert DOWN = Down
+
+
+L1 = START,
+START = (on->LEFTSIDE),
+LEFTSIDE = (moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->achieve-> LEFTSIDE),
+RIGHTSIDE =(moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->achieve-> RIGHTSIDE
+).
+
+
+controllerSpec SPECIFICATION = {
+	liveness = {MOVE_RIGHT,MOVE_LEFT,DOWN}
+	controllable = {Controllable}
+}
+controller ||C = (L1)~{SPECIFICATION}.

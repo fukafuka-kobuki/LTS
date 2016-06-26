@@ -1,0 +1,46 @@
+const HEIGHT_MAX = 2
+range UP_RANGE = 1..HEIGHT_MAX
+range DOWN_RANGE = 0..HEIGHT_MAX-1
+range Height = 0..HEIGHT_MAX
+
+set Out = {up[HEIGHT_MAX+1], down[-1]}
+set Change_Height = {up[UP_RANGE], down[DOWN_RANGE]}
+set Controllable = {on, off, Change_Height, moveRight, moveLeft,down[2]}
+
+
+L1 = START,
+START = (on -> H[0]),
+H[h:Height] = (
+	 moveRight -> end -> moveLeft -> H[h]
+	|moveLeft -> end -> moveRight -> H[h]
+	|when (h == 0) off -> START
+	|when (h < HEIGHT_MAX) up[h+1] -> H[h+1]
+	|when (h >0) down[h-1] -> H[h-1]
+).
+
+fluent ON = <on, off>
+fluent OFF = <off, on>
+
+fluent HEIGHT[h: Height] = <{up[h], down[h]}, Change_Height\{up[h], down[h]}>
+fluent INVALID_ACTION = <down[2], Controllable\{down[2]}>
+
+
+assert TURN_ON = ON
+assert TURN_OFF = OFF
+fluent OBSERVATE = <moveRight, Controllable\{moveRight}>
+
+//assert REACH = HEIGHT[2]
+assert OBSERVATION = (HEIGHT[2]&&OBSERVATE)
+
+
+ltl_property INVALID = []!(INVALID_ACTION)
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID}
+	assumption = {TURN_ON}
+	liveness = {OBSERVATION,TURN_OFF}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.
+

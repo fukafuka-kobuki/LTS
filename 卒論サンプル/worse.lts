@@ -1,0 +1,127 @@
+const X_MAX = 2
+const Y_MAX = 2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+const X_MAXf = 2
+const Y_MAXf = 2
+range Xf = 0..X_MAXf
+range Yf = 0..Y_MAXf
+
+set FlagAction = {stop[Y]}
+set FlagActionf = {stopf[Yf]}
+
+set Controllable = {enterstair, outstair,moveright, moveleft, up,down,FlagAction}
+set Controllable2 = {enterstair, outstair,floorinit,moverightf, moveleftf, movefront,moveback}
+
+
+fluent OUT = <outstair, enterstair>
+fluent ENTER = <enterstair, outstair>
+fluent MOVEFRONT = <movefront, {Controllable2}\{movefront}>
+//fluent LOCATION[x:X][y:Y]=<{stop[x][y]},{FlagAction}\{stop[x][y]}>
+fluent CLEANRIGHT=<reachright,down>
+fluent CLEANLEFT=<reachleft,down>
+
+fluent CLEANRIGHTF=<reachrightf,{movefront,moveback}>
+fluent CLEANLEFTF=<reachleftf,{movefront,moveback}>
+
+ 
+fluent CLEANACHIEVEF[b:Yf]=<stopf[b],floorinit>
+fluent Down = <down,Controllable\{down}>
+
+assert MOVE_FRONT = MOVEFRONT
+assert CLEAN_RIGHT = CLEANRIGHT
+assert CLEAN_LEFT = CLEANLEFT
+assert CLEAN_RIGHTF = CLEANRIGHTF
+assert CLEAN_LEFTF = CLEANLEFTF
+
+assert DOWN = Down
+assert ENTERS = ENTER
+assert OUTS = OUT
+//assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2])
+
+assert CLEAN_ACHIEVE = (CLEANRIGHT && CLEANLEFT)
+
+assert CLEAN_ACHIEVEF = (CLEANRIGHTF && CLEANLEFTF)
+
+
+//assert CLEAN_ACHIEVEF = (CLEANACHIEVEF[1][2])
+
+
+L1 = STAIR,
+STAIR = (enterstair->stop[0]->L[0]),
+L[0] = (
+		moveright->stop[1]-> L[1]|
+		moveleft->reachleft->L[0]|
+		up -> stop[0]->L[0]|
+		down -> (stop[0] -> L[0]|outstair -> FLOOR)|
+		reachleft->L[0]),
+L[1] = (
+		moveleft->stop[0]-> L[0]| 
+		moveright->stop[2]-> L[2]| 
+		up -> stop[1]->L[1]|
+		down -> (stop[1] -> L[1]| outstair -> FLOOR)),
+L[2] = (
+		moveleft->stop[1]-> L[1]| 
+		reachright -> L[2]|
+		up -> stop[1]->L[1]|
+		down -> (stop[2] -> L[2]| outstair -> FLOOR)),
+FLOOR = (enterstair -> stop[0] -> L[0]).
+
+F1 = (enterstair -> Stair),
+Stair = (outstair -> floorinit -> START),
+START = (stopf[0] -> F[0]),
+F[0] = (
+		moverightf->stopf[1]-> F[1]|
+		moveleftf->reachleftf->F[0]|
+		moveback -> countm->stopf[0] -> F[0]|
+		movefront -> count-> stopf[0] -> F[0]|
+		reachleftf->F[0]|
+		countlimit -> enterstair -> Stair),
+F[1] = (
+		moveleftf->stopf[0]-> F[0]| 
+		moverightf->stopf[2]-> F[2]| 
+		moveback -> countm->stopf[1] -> F[1]|
+		countlimit -> enterstair -> Stair|
+		movefront -> count->stopf[1] -> F[1]),
+F[2] = (
+		moveleftf->stopf[1]-> F[1]| 
+		reachrightf -> F[2]|
+		countlimit -> enterstair -> Stair|
+		moveback -> countm -> stopf[2] -> F[2]|
+		movefront -> count -> stopf[2] -> F[2]).
+
+
+const MaxTime = 7
+range Times = 0..MaxTime-1
+
+//—x‚èê‚Ì´‘|ƒJƒEƒ“ƒ^
+COUNTFLOOR = COUNTFLOOR[0],
+COUNTFLOOR[i:Times] = (count -> COUNTFLOOR[i+1]|
+					countm -> COUNTFLOOR[i-1]|
+                 	enterstair -> COUNTFLOOR),
+COUNTFLOOR[MaxTime] = (countlimit->enterstair ->COUNTFLOOR),
+COUNTFLOOR[MaxTime+1] = ERROR.
+
+
+//ltl_property OUTSTA = [] <> OUT
+
+controllerSpec SPECIFICATION = {
+	safety = {}
+	assumption ={DOWN}
+	liveness = {CLEANRIGHT,CLEANLEFT}
+	controllable = {Controllable}
+}
+controller ||C = (L1)~{SPECIFICATION}.
+
+
+controllerSpec SPECIFICATION2 = {
+	safety = {}
+	assumption ={MOVE_FRONT}
+	liveness = {CLEAN_RIGHTF,CLEAN_LEFTF}
+	controllable = {Controllable2}
+}
+controller ||C2 = (F1)~{SPECIFICATION2}.
+
+||C3 = (C2 || COUNTFLOOR).
+||SWEEP = (C||C3).

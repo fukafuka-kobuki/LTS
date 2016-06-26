@@ -1,0 +1,95 @@
+const X_MAX =2
+const Y_MAX =2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1]}
+set MoveAction = {move[X][Y], Out}
+set CleanningAction = {clean[X][Y]}
+set Controllable = {on,off, navigation,MoveAction, Out}
+set Actions ={Controllable, end, out}
+
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+fluent LOCATION[x:X][y:Y]=<{move[x][y]},MoveAction\{move[x][y]}>
+fluent NAVIGATION = <navigation, end>
+fluent CLEANNING[x:X][y:Y] = <clean[x][y], off>
+
+
+assert TURN_OFF = OFF
+assert TURN_ON = ON
+assert CLEANNING_GOAL = (CLEANNING[0][0]&&CLEANNING[0][1]&&CLEANNING[0][2]&&CLEANNING[1][1]&&CLEANNING[1][2]&&CLEANNING[2][0]&&CLEANNING[2][1]&&CLEANNING[2][2])
+fluent Invalid = <move[1][0],MoveAction\{move[1][0]}>
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT)
+
+
+
+L1 = START,
+START = (on->L[0][0]),
+L[0][0] = (navigation ->end-> L[0][0]|
+		clean[0][0] -> L[0][0]|
+		move[0][1]-> L[0][1]| 
+		move[1][0]-> L[1][0]|
+		off -> START),
+
+L[0][1] = (navigation ->end-> L[0][1]|
+		clean[0][1] -> L[0][1]|
+		move[0][2]-> L[0][2]| 
+		move[1][1]-> L[1][1]|
+		move[0][0]-> L[0][0]),
+
+L[0][2] = (navigation ->end->L[0][2]|
+		clean[0][2] -> L[0][2]|
+		move[1][2]-> L[1][2]|
+		move[0][1]-> L[0][1]),
+
+L[1][0] = (navigation ->end-> L[1][0]|
+		clean[1][0] -> L[1][0]|
+		move[1][1]-> L[1][1]|
+		move[0][0]-> L[0][0]|
+		move[2][0]-> L[2][0]),
+
+L[1][1] = (navigation ->end-> L[1][1]|
+		clean[1][1] -> L[1][1]|
+		move[0][1]-> L[0][1]|
+		move[1][0]-> L[1][0]|
+		move[2][1]-> L[2][1]|
+		move[1][2]-> L[1][2]),
+
+
+L[1][2] = (navigation -> end->L[1][2]|
+		clean[1][2] -> L[1][2]|
+		move[0][2]-> L[0][2]|
+		move[2][2]-> L[2][2]|
+		move[1][1]-> L[1][1]),
+
+L[2][0] = (navigation ->end-> L[2][0]|
+		clean[2][0] -> L[2][0]|
+		move[1][0]-> L[1][0]|
+		move[2][1]-> L[2][1]),
+
+L[2][1] = (navigation ->end-> L[2][1]|
+		clean[2][1] -> L[2][1]|
+		move[2][2]-> L[2][2]| 
+		move[2][0]-> L[2][0]|
+		move[1][1]-> L[1][1]),
+
+L[2][2] = (navigation ->end-> L[2][2]| 
+		clean[2][2] -> L[2][2]|
+		move[2][1]-> L[2][1]| 
+		move[1][2]-> L[1][2])
+,
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION}
+	assumption ={TURN_ON}
+	liveness = {CLEANNING_GOAL,TURN_OFF}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

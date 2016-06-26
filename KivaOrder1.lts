@@ -1,0 +1,234 @@
+//Sxmax: 棚配置の縦列数
+//Symax: 棚配置の横列数
+//→棚の数= Sxmax * Symax
+//AgentNum: Agentの数
+//StationNum:Station(workerの待機場所)の数
+//DockNum: Dock(Agentの待機場所)の数
+//
+//これらの数値を変更すれば環境モデルを構築可能
+
+const Sxmax = 2
+const Symax = 2
+
+const AgentNum = 2
+const StationNum = 2
+const DockNum = 2
+const ShippingNum = 2
+const ReplenishmentNum = 2
+const BoxNum = 2
+const MaxTime = 8
+
+range Sx = 1..Sxmax
+range Sy = 1..Symax
+
+range Agent = 1..AgentNum
+range Station = 1..StationNum
+range Shipping = 1..ShippingNum
+range Replenishment = 1..ReplenishmentNum
+range Box = 1..BoxNum
+range Dock = 1..DockNum
+range Times = 0..MaxTime
+
+
+//set Controllable1 = {start,[1].moveStorage[Sx][Sy],[1].moveDock[Dock],[1].moveReplenishment[Station],[1].moveBoxInduction[Box],[1].moveReplenishment[Replenishment],[1].movePicking[Shipping], [1].pick, [1].put, [1].end,[1].reset}
+set Controllable1 = {start,[1].moveStorage[Sx][Sy],[1].moveDock[Dock],[1].movePicking[Station],[1].moveBoxInduction[Box], [1].pick, [1].put, [1].end,[1].reset}
+set Controllable2 = {start,[2].moveStorage[Sx][Sy],[2].moveDock[Dock],[2].movePicking[Station], [2].pick, [2].put, [2].end,[2].reset}
+set Controllable = {Controllable1,Controllable2}
+set Monitorable = {[Agent].arriveStorage[Sx][Sy],[Agent].arriveDock[Dock],[Agent].arrivePicking[Station], [Agent].picksucc, [Agent].pickfail, [Agent].putsucc, [Agent].putfail}
+
+
+
+
+///////////////////////Time_Constraint///////////////////////
+COUNT(C = 1)=COUNT[0],
+COUNT[i:Times]=(
+	when(i==MaxTime)Controllable1\{[C].end,[C].reset} -> ERROR
+	|when(i!=MaxTime)Controllable1\{[C].end,[C].reset}->COUNT[i+1]
+	|[C].end->[C].reset->COUNT
+).
+
+
+//environment model
+AGENT(I=1) = (start -> START),
+START = ([I].arriveDock[I]->DOCK[I][I]),
+DOCK[dc:Dock][a:Agent] = (
+	[I].moveDock[d:Dock] -> [I].arriveDock[d]-> DOCK[d][a]
+	|[I].moveStorage[sx:Sx][sy:Sy] ->[I].arriveStorage[sx][sy] ->STORAGE[sx][sy][a]
+	|[I].movePicking[s:Station] -> [I].arrivePicking[s] -> PICKING[s][a] 	
+	|[I].moveBoxInduction[b:Box] -> [I].arriveBoxInduction[b] -> BOXINDUCTION[b][a] 	
+	|[I].pick->
+		([I].picksucc-> DOCK[dc][a]
+		)
+	|[I].put->
+		([I].putsucc-> DOCK[dc][a]
+		)
+	|[I].end ->[I].reset -> DOCK[dc][a]
+),
+STORAGE[sxc:Sx][syc:Sy][a:Agent]=(
+	[I].moveDock[d:Dock] -> [I].arriveDock[d]-> DOCK[d][a]
+	|[I].moveStorage[sx:Sx][sy:Sy] ->[I].arriveStorage[sx][sy] ->STORAGE[sx][sy][a]
+	|[I].movePicking[s:Station] -> [I].arrivePicking[s] -> PICKING[s][a] 	
+	|[I].moveBoxInduction[b:Box] -> [I].arriveBoxInduction[b] -> BOXINDUCTION[b][a] 	
+	|[I].pick->
+		([I].picksucc-> STORAGE[sxc][syc][a]
+		)
+	|[I].put->
+		([I].putsucc-> STORAGE[sxc][syc][a]
+		)
+	|[I].end ->[I].reset -> STORAGE[sxc][syc][a]
+),
+PICKING[s:Station][a:Agent]=(
+	[I].moveDock[d:Dock] -> [I].arriveDock[d]-> DOCK[d][a]
+	|[I].moveStorage[sx:Sx][sy:Sy] ->[I].arriveStorage[sx][sy] ->STORAGE[sx][sy][a]
+	|[I].movePicking[sc:Station] -> [I].arrivePicking[sc] -> PICKING[s][a] 	
+	|[I].moveBoxInduction[b:Box] -> [I].arriveBoxInduction[b] -> BOXINDUCTION[b][a] 	
+	|[I].pick->
+		([I].picksucc-> PICKING[s][a]
+		)
+	|[I].put->
+		([I].putsucc-> PICKING[s][a]
+		)
+	|[I].end ->[I].reset -> PICKING[s][a]
+),
+BOXINDUCTION[b:Box][a:Agent]=(
+	[I].moveDock[d:Dock] -> [I].arriveDock[d]-> DOCK[d][a]
+	|[I].moveStorage[sx:Sx][sy:Sy] ->[I].arriveStorage[sx][sy] ->STORAGE[sx][sy][a]
+	|[I].movePicking[s:Station] -> [I].arrivePicking[s] -> PICKING[s][a] 	
+	|[I].moveBoxInduction[bc:Box] -> [I].arriveBoxInduction[bc] -> BOXINDUCTION[b][a] 	
+	|[I].pick->
+		([I].picksucc-> BOXINDUCTION[b][a]
+		)
+	|[I].put->
+		([I].putsucc-> BOXINDUCTION[b][a]
+		)
+	|[I].end ->[I].reset -> BOXINDUCTION[b][a]
+).
+||ALL(N = AgentNum)=
+	forall [i: 1..N]
+ 	(AGENT(i)).
+   
+
+//flusent definition
+fluent Docking[a:Agent][d:Dock] = <[a].arriveDock[d], {[a].moveDock[Dock],[a].moveStorage[Sx][Sy],[a].movePicking[Shipping],[a].moveBoxInduction[Box]}> 
+fluent MoveToDock[a:Agent][d:Dock]=<[a].moveDock[d], {[a].moveDock[Dock],[a].moveStorage[Sx][Sy],[a].movePicking[Shipping],[a].moveBoxInduction[Box]}\{[a].moveDock[d]}>
+
+fluent Pickinging[a:Agent][s:Station] = <[a].arrivePicking[s], {[a].moveDock[Dock],[a].moveBoxInduction[Box], [a].movePicking[Shipping],[a].moveStorage[Sx][Sy]}> 
+fluent MoveToPicking[a:Agent][s:Station]=<[a].movePicking[s], {[a].moveDock[Dock],[a].moveBoxInduction[Box], [a].movePicking[Shipping],[a].moveStorage[Sx][Sy]}\{[a].movePicking[s]}>
+
+fluent BoxInductioning[a:Agent][b:Box] = <[a].arriveBoxInduction[b], {[a].moveDock[Dock],[a].moveBoxInduction[Box], [a].movePicking[Shipping],[a].moveStorage[Sx][Sy]}\{[a].moveBoxInduction[b]}> 
+fluent MoveToBoxInduction[a:Agent][b:Box]=<[a].moveBoxInduction[b], {[a].moveDock[Dock],[a].moveBoxInduction[Box], [a].movePicking[Shipping],[a].moveStorage[Sx][Sy]}\{[a].moveBoxInduction[b]}>
+
+fluent Storaging[a:Agent][x:Sx][y:Sy] = <[a].arriveStorage[x][y], {[a].moveDock[Dock],[a].moveBoxInduction[Box],[a].movePicking[Shipping],[a].moveStorage[Sx][Sy]}> 
+fluent MoveToStorage[a:Agent][x:Sx][y:Sy]=<[a].moveStorage[x][y], {[a].moveDock[Dock],[a].moveBoxInduction[Box],[a].movePicking[Shipping],[a].moveStorage[Sx][Sy]}\{[a].moveStorage[x][y]}>
+
+fluent Pick[a:Agent] = <[a].pick,[a].put>
+fluent Put[a:Agent] = <[a].put,[a].pick>
+fluent FlagPick[a:Agent] = <[a].pick,{[a].moveStorage[Sx][Sy],[a].moveDock[Dock],[a].moveBoxInduction[Box],[a].movePicking[Shipping]}>
+fluent FlagPut[a:Agent] = <[a].put,{[a].moveStorage[Sx][Sy],[a].moveDock[Dock],[a].moveBoxInduction[Box],[a].movePicking[Shipping]}>
+
+fluent ArriveSpecificShelf[a:Agent][x:Sx][y:Sy] = <[a].moveStorage[x][y], {[a].moveStorage[Sx][Sy],[a].moveBoxInduction[Box],[a].movePicking[Shipping],[a].moveDock[Dock]}\{[a].moveStorage[x][y]}>
+fluent ArriveSpecificBoxInduction[a:Agent][b:Box] = <[a].moveBoxInduction[b], {[a].moveStorage[Sx][Sy],[a].moveBoxInduction[Box],[a].movePicking[Shipping],[a].moveDock[Dock]}\{[a].moveBoxInduction[b]}>
+fluent ArriveSpecificPicking[a:Agent][s:Station] = <[a].movePicking[s], {[a].moveStorage[Sx][Sy],[a].moveBoxInduction[Box],[a].movePicking[Shipping],[a].moveDock[Dock]}\{[a].movePicking[s]}>
+
+fluent FinishTask[a:Agent] = <[a].end, [a].reset>
+fluent Picked[a:Agent] = <[a].pick, [a].reset>
+fluent Puted[a: Agent] = <[a].put, [a].reset>
+
+assert PICKinPICKING1 = (Pickinging[1][Picking] && FlagPick[1])
+assert PICKinDOCK1 = (Docking[1][Dock] && FlagPick[1])
+assert PUTinDOCK1 = (Docking[1][Dock]&& FlagPut[1])
+assert PUTinPICKING1 = (Pickinging[1][Station] && FlagPut[1])
+
+assert Goal10 = (ArriveSpecificShelf[1][1][1]&&Pick[1])
+assert Goal11 =(ArriveSpecificBoxInduction[1][1])
+assert Goal12 =(ArriveSpecificPicking[1][1])
+assert Goal13 = (ArriveSpecificShelf[1][1][1] && Put[1])
+assert Goal14 = (FinishTask[1])
+
+//ltl_property MustDoTask = []()
+ltl_property SHIPPINGALONE1 = [](MoveToPicking[1][Shipping] -> Pick[1])
+ltl_property BackWithShelf1 = [](MoveToDock[1][Dock] -> !Pick[1])
+ltl_property ILLIGALPICK1 = []!(PICKinPICKING1 ||PICKinDOCK1)
+ltl_property ILLIGALPUT1 = []!(PUTinDOCK1|| PUTinPICKING1)
+ltl_property RePICK1 = []((Pick[1] ->X![1].pick)W [1].reset)
+ltl_property RePut1 = []((Put[1] -> X![1].put)W [1].reset)
+ltl_property EndAfterTask1 = [](FinishTask[1]-> (Picked[1] && Puted[1]))
+
+controllerSpec AGENT1SPEC = {
+	safety = {BackWithShelf1,ILLIGALPICK1,ILLIGALPUT1,SHIPPINGALONE1,RePICK1, RePut1,EndAfterTask1}
+	liveness = {Goal10,Goal11,Goal12,Goal13, Goal14}
+	controllable = {Controllable1}
+}
+controller ||ACONT1 = (AGENT(1)||COUNT(1))~{AGENT1SPEC}.
+//controller ||ACONT1 = (AGENT(1))~{AGENT1SPEC}.
+
+
+
+
+
+
+
+
+
+assert PICKinSTATION2 = (Stationing[2][Replenishment] && FlagPick[1])
+assert PICKinDOCK2 = (Docking[2][Dock] && FlagPick[1])
+
+ltl_property STATIONALONE2 = [](moveReplenishment[2][Replenishment] -> Pick[2])
+ltl_property BackWithShelf2 = [](MoveToDock[2][Dock] -> !Pick[2])
+ltl_property ILLIGALPICK2 = []!(PICKinSTATION2 ||PICKinDOCK2)
+ltl_property RePICK2 = [](Pick[2] ->X![2].pick)
+ltl_property RePut2 = [](Put[2] -> X![2].put)
+
+
+
+assert Assumption2 = (ArriveSpecificShelf[2][1][1]&&Pick[2])
+assert Goal21 =(ArriveSpecificStation[2][1])
+assert Goal22 = (ArriveSpecificShelf[2][1][1] && Put[2])
+assert Goal23 = (FinishTask[2])
+
+
+
+controllerSpec AGENT2SPEC = {
+	safety = {BackWithShelf2,ILLIGALPICK2,STATIONALONE2,RePICK2, RePut2}
+	assumption = {Assumption2}
+	liveness = {Goal21, Goal22, Goal23}
+	controllable = {Controllable2}
+}
+controller ||ACONT2 = (AGENT(2))~{AGENT2SPEC}.
+
+
+||ALLCONT =(ACONT1||ACONT2).
+
+
+assert DUPLIDOCKING1 =(Docking[1][1]&&MoveToDock[2][1])
+assert DUPLIDOCKING2 =(Docking[1][2]&&MoveToDock[2][2])
+assert DUPLIDOCKING3 =(Docking[2][1]&&MoveToDock[1][1])
+assert DUPLIDOCKING4 =(Docking[2][2]&&MoveToDock[1][2])
+
+assert DUPLISTATION1 =(Stationing[1][1]&&MoveToStation[2][1])
+assert DUPLISTATION2 =(Stationing[1][2]&&MoveToStation[2][2])
+assert DUPLISTATION3 =(Stationing[2][1]&&MoveToStation[1][1])
+assert DUPLISTATION4 =(Stationing[2][2]&&MoveToStation[1][2])
+
+assert DUPLISHELFING1 =(Shelfing[1][1][1]&&MoveToShelf[2][1][1])
+assert DUPLISHELFING2 =(Shelfing[1][2][1]&&MoveToShelf[2][2][1])
+assert DUPLISHELFING3 =(Shelfing[2][1][1]&&MoveToShelf[1][1][1])
+assert DUPLISHELFING4 =(Shelfing[2][2][1]&&MoveToShelf[1][2][1])
+
+
+ltl_property DUPLI = []!(DUPLIDOCKING1||DUPLIDOCKING2||DUPLIDOCKING3||DUPLIDOCKING4)
+ltl_property DUPLIST = []!(DUPLISTATION1||DUPLISTATION2||DUPLISTATION3||DUPLISTATION4)
+ltl_property DUPLISH = []!(DUPLISHELFING1||DUPLISHELFING2||DUPLISHELFING3||DUPLISHELFING4)
+
+controllerSpec KIVASYSTEM = {
+	safety = {DUPLI,DUPLIST,DUPLISH}
+	controllable = {Controllable}
+}
+
+controller ||WHOLE = (ALLCONT)~{KIVASYSTEM}.
+
+
+
+//要求中心or実装中心
+//来週まで：どういう捨象ができるか
+

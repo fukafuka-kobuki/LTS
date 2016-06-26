@@ -1,0 +1,122 @@
+
+const MaxTime = 3
+range Times = 0..MaxTime
+
+set MoveStair = {enterstair,achievef}
+set Controllable = {moveright, moveleft, down,MoveStair}
+set CountAction = {count}
+set Controllable1 = {floorinit,changeline,moveleftf,moverightf,MoveStair}
+set Actions = {Controllable,achieve,outstair}
+
+
+fluent MOVERIGHT = <moveright, achieve>
+fluent MOVELEFT = <moveleft, achieve>
+fluent Down = <down,achieve>
+
+fluent CHANGELINE = <changeline,achievef>
+fluent MOVERIGHTF = <moverightf, achievef>
+fluent MOVELEFTF = <moveleftf, achievef>
+
+fluent ENTERSTAIR = <enterstair,outstair>
+fluent OUTSTAIR = <outstair,enterstair>
+
+assert MOVE_RIGHTF = MOVERIGHTF
+assert MOVE_LEFTF = MOVELEFTF
+assert CHANGE_LINE = CHANGELINE
+
+assert ENTER_STAIR = ENTERSTAIR
+assert OUT_STAIR = OUTSTAIR
+assert MOVE_RIGHT = MOVERIGHT
+assert MOVE_LEFT = MOVELEFT
+assert DOWN = Down
+
+//ltl_property OUTSTAIR1 = [](ENTER_STAIR -> (<>OUTSTAIR))
+
+
+L1 = START,
+START = (enterstair->LEFTSIDE),
+LEFTSIDE = (moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+			|down ->(achieve-> RIGHTSIDE|outstair -> START)
+//			|down ->CHECK
+//			|down ->outstair -> START
+),
+RIGHTSIDE =(moveright ->achieve-> RIGHTSIDE
+			|moveleft ->achieve-> LEFTSIDE
+//			|down ->CHECK
+			|down ->(achieve-> RIGHTSIDE|outstair -> START)
+//			|down ->outstair -> START
+//),
+//CHECK = (achieve-> LEFTSIDE
+//		|outstair -> START
+).
+
+
+
+Floor = (enterstair -> STAIR|floorinit -> LEFT),
+LEFT = (moverightf ->achievef-> RIGHT
+			|moveleftf ->achievef-> LEFT
+			|changeline ->count->achievef-> LEFT
+			|enterstair -> STAIR
+),
+RIGHT =(moverightf ->achievef-> RIGHT
+			|moveleftf ->achievef-> LEFT
+			|changeline->count->achievef-> RIGHT
+			|enterstair -> STAIR
+),
+STAIR = (outstair->Floor
+).
+
+
+controllerSpec SPECIFICATION = {
+	safety = {}
+	assumption = {ENTER_STAIR}
+	liveness = {MOVE_RIGHT,MOVE_LEFT,DOWN}
+//	liveness = {OUT_STAIR}
+	controllable = {Controllable}
+}
+controller ||STAIR = (L1)~{SPECIFICATION}.
+
+
+
+INFLOOR = (enterstair->INSTAIR),
+INSTAIR = (outstair -> floorinit -> INFLOOR).
+
+
+
+COUNT = COUNT[0],
+COUNT[i:Times] = (count -> COUNT[i+1]
+                 |floorinit -> COUNT),
+COUNT[MaxTime+1] = ERROR.
+
+
+controllerSpec COUNTSPEC = {
+	assumption = {}
+	liveness = {}
+	controllable = {CountAction}
+}
+controller ||COUNTCONTROLL = (COUNT)~{COUNTSPEC}.
+
+
+
+controllerSpec SPECIFICATION1 = {
+	assumption = {}
+//	liveness = {MOVE_RIGHTF,MOVE_LEFTF,CHANGE_LINE}
+	controllable = {Controllable1}
+}
+controller ||FLOOR = (Floor)~{SPECIFICATION1}.
+
+
+
+||SWEEP = (STAIR||FLOOR||COUNTCONTROLL).
+
+controllerSpec SPECIFICATION2 = {
+	safety = {}
+	assumption ={ENTER_STAIR}
+	liveness = {OUT_STAIR}
+	controllable = {MoveStair}
+}
+controller ||WHOLE = (SWEEP)~{SPECIFICATION2}.
+
+
+

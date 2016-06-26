@@ -1,0 +1,52 @@
+const X_MAX =2
+const Y_MAX =2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+range Jump_Range = 1..Y_MAX
+range Down_Range = 0..Y_MAX-1
+
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1], down[X][-1], jump[X][Y_MAX+1]}
+set Invalid = {jump[X][0], down[X][Y_MAX]}
+set MoveAction = {move[X][Y], jump[X][Jump_Range], down[X][Down_Range], Invalid, Out}
+set Controllable = {on,off,move[X][Y], takephoto,MoveAction, Out}
+set Actions ={Controllable, end, out}
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+fluent LOCATION[x:X][y:Y]=<{move[x][y], jump[x][y], down[x][y]},{MoveAction}\{move[x][y], jump[x][y], down[x][y]}>
+fluent TAKEPHOTO = <takephoto, end>
+fluent INVALID = <Invalid, Controllable\Invalid>
+
+assert TURN_OFF = OFF
+assert TURN_ON = ON
+assert TAKE_PHOTO = (LOCATION[2][2]&&TAKEPHOTO)
+
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT||INVALID)
+
+
+L1 = START,
+START = (on->L[0][0]),
+L[x:X][y:Y] =(takephoto -> end-> L[x][y]
+	| when (x==0&& y==0) off -> START
+	| when (x > 0) move[x-1][y] -> L[x-1][y]
+	| when (x < X_MAX)move[x+1][y] -> L[x+1][y]
+	| when (x == 0) move[x-1][y] -> OUT_CONTROLL
+	| when (x == X_MAX)move[x+1][y] -> OUT_CONTROLL
+	| when (y > 0) down[x][y-1] -> L[x][y-1]
+	| when (y < Y_MAX)jump[x][y+1] -> L[x][y+1]
+	| when (y == 0) down[x][y-1] -> OUT_CONTROLL
+	| when (y == Y_MAX)jump[x][y+1] -> OUT_CONTROLL
+),
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION}
+	assumption ={TURN_ON}
+	liveness = {TAKE_PHOTO,TURN_OFF}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.

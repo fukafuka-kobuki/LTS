@@ -1,0 +1,538 @@
+const X_MAX = 2
+const Y_MAX = 2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+const X_MAXf = 2
+const Y_MAXf = 2
+range Xf = 0..X_MAXf
+range Yf = 0..Y_MAXf
+
+set FlagAction = {stop[X][Y]}
+set FlagActionf = {stopf[Xf][Yf]}
+
+set StairControllable = {enterstair, outstair,moveright, moveleft, up,down}
+set Controllable2 = {enterstair, outstair,floorinit,moverightf, moveleftf, movefront,moveback}
+
+
+fluent OUT = <floorinit, outstair>
+fluent ENTER = <enterstair, outstair>
+//fluent LOCATION[x:X][y:Y]=<{stop[x][y]},{FlagAction}\{stop[x][y]}>
+fluent CLEANACHIEVE[x:X][y:Y]=<stop[x][y],outstair> 
+fluent CLEANACHIEVEF[a:Xf][b:Yf]=<stopf[a][b],floorinit>
+
+assert ENTERS = ENTER
+assert OUTS = OUT
+//assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2])
+
+assert CLEAN_ACHIEVE = (CLEANACHIEVE[0][2]&&CLEANACHIEVE[1][2]&&CLEANACHIEVE[2][2]&&CLEANACHIEVE[0][1]&&CLEANACHIEVE[1][1]&&CLEANACHIEVE[2][1]&&CLEANACHIEVE[0][0]&&CLEANACHIEVE[1][0]&&CLEANACHIEVE[2][0]&&CLEANACHIEVEF[0][2]&&CLEANACHIEVEF[1][2]&&CLEANACHIEVEF[2][2]&&CLEANACHIEVEF[0][1]&&CLEANACHIEVEF[1][1]&&CLEANACHIEVEF[2][1]&&CLEANACHIEVEF[0][0]&&CLEANACHIEVEF[1][0]&&CLEANACHIEVEF[2][0])
+
+//assert CLEAN_ACHIEVEF = (CLEANACHIEVEF[1][2])
+
+
+//fluent for floor
+fluent Change = <movefront,{Controllable2}\{movefront}>
+fluent RIGHTF = <reachrightf,moveleftf>
+fluent LEFTF = <reachleftf,moverightf>
+fluent MoveRightF = <moverightf, reachrightf>
+fluent MoveLeftF = <moveleftf, reachleftf>
+fluent CLEAN_RIGHTF = <reachrightf,{movefront}>
+fluent CLEAN_LEFTF = <reachleftf,{movefront}>
+fluent EnterF = <floorinit, {Controllable2}\{floorinit}>
+fluent InvalidF = <moveback, {Controllable2}\{moveback}>
+
+
+
+
+//assertion for floor
+
+assert ENTERF = EnterF
+assert MOVE_FRONT = Change
+assert CHANGEF = (Change||EnterF)
+assert SWEEP_COMPLETEF = (CLEAN_RIGHTF && CLEAN_LEFTF)
+assert SWEEP_RIGHTF = CLEAN_RIGHTF
+assert SWEEP_LEFTF = CLEAN_LEFTF
+
+
+
+
+
+//fluent for stair
+fluent Down = <down,{StairControllable}\{down}>
+fluent RIGHT = <reachright,{moveleft}>
+fluent LEFT = <reachleft , moveright>
+fluent MoveRight = <moveright, reachright>
+fluent MoveLeft = <moveleft, reachleft>
+fluent CLEAN_RIGHT = <reachright,{down}>
+fluent CLEAN_LEFT = <reachleft , {down}>
+fluent EnterS = <enterstair, {StairControllable}\{enterstair}>
+fluent Invalid = <up, StairControllable\{up}>
+
+
+//assertion for stair
+assert ENTER = EnterS
+assert DOWN = Down
+assert DOWNS = (Down||EnterS)
+assert SWEEP_COMPLETE = (CLEAN_RIGHT && CLEAN_LEFT)
+assert SWEEP_RIGHT = CLEAN_RIGHT
+assert SWEEP_LEFT = CLEAN_LEFT
+
+
+STAIR = (enterstair -> LEFTSIDE),
+LEFTSIDE = (moveright-> (achieve->MIDDLE|reachright -> RIGHTSIDE)|
+			moveleft -> reachleft -> LEFTSIDE|
+			down ->(reachdown->LEFTSIDE|outstair ->STAIR)|
+			up -> LEFTSIDE),
+MIDDLE = (moveright->(achieve->MIDDLE|reachright -> RIGHTSIDE)|
+			moveleft ->(achieve ->MIDDLE|reachleft -> LEFTSIDE|
+			up -> MIDDLE|
+			down -> MIDDLE)),
+RIGHTSIDE = (moveleft ->(achieve-> MIDDLE|reachleft -> LEFTSIDE)|
+			moveright -> reachright -> RIGHTSIDE|
+			down -> (reachdown ->RIGHTSIDE| outstair->STAIR)|
+			up -> RIGHTSIDE).
+
+
+//safety goal for STAIR
+//ltl_property ChangeStair = [](!DOWN U SWEEP_COMPLETE) 
+ltl_property DuplicateDown = [](DOWNS -> X !DOWNS)
+ltl_property CLEAN = [](MoveRight ->(!DOWN W SWEEP_LEFT))
+//ltl_property CLEAN = [](RIGHT -> !DOWN)
+ltl_property ChangeStair = [](SWEEP_COMPLETE -> X DOWN)
+ltl_property ConstRight = [](MoveRight -> (!MoveLeft W RIGHT))
+ltl_property ConstLeft = [](MoveLeft -> (!MoveRight W LEFT))
+ltl_property RL = [](MoveRight -> (!LEFT W MoveLeft))
+ltl_property RR = [](MoveLeft -> (!RIGHT W MoveRight))
+ltl_property INVALID  = [](!Invalid)
+
+F1 = (enterstair -> Stair| floorinit ->F[0][5]),
+Stair = (outstair -> floorinit -> F[0][5]),
+F[0][5] = (
+		moverightf-> F[1][5]|
+		moveleftf->reachleftf->F[0][5]|
+		movefront -> F[0][4]),
+F[1][5] = (
+		moveleftf-> F[0][5]| 
+		moverightf-> F[2][5]| 
+		movefront-> F[1][4]),
+F[2][5] = (
+		moveleftf-> F[1][5]| 
+		moverightf -> F[3][5]|
+		movefront  -> F[2][4]),
+F[3][5] = (
+		moverightf-> F[4][5]|
+		moveleftf->F[2][5]|
+		movefront -> F[3][4]),
+F[4][5] = (
+		moveleftf-> F[3][5]| 
+		moverightf-> F[5][5]| 
+		movefront-> F[4][4]),
+F[5][5] = (
+		moveleftf-> F[4][5]| 
+		moverightf -> F[6][5]|
+		movefront -> F[5][4]),
+F[6][5] = (
+		moverightf-> F[7][5]|
+		moveleftf->F[5][5]|
+		movefront -> F[6][4]),
+F[7][5] = (
+		moveleftf-> F[6][5]| 
+		moverightf-> F[8][5]| 
+		movefront -> F[7][4]),
+F[8][5] = (
+		moveleftf-> F[7][5]| 
+		moverightf -> F[9][5]|
+		movefront -> F[8][4]),
+F[9][5] = (
+		moverightf-> F[10][5]|
+		moveleftf->F[8][5]|
+		movefront  -> F[9][4]),
+F[10][5] = (
+		moveleftf-> F[9][5]| 
+		moverightf-> F[11][5]| 
+		movefront -> F[10][4]),
+F[11][5] = (
+		moveleftf-> F[10][5]| 
+		moverightf -> F[12][5]|
+		movefront -> F[11][4]),
+F[12][5] = (
+		moverightf-> F[13][5]|
+		moveleftf->F[11][5]|
+		movefront -> F[12][4]),
+F[13][5] = (
+		moveleftf-> F[12][5]| 
+		moverightf -> reachrightf-> F[13][5]| 
+		movefront -> F[13][4]),
+		
+
+F[0][4] = (
+		moverightf-> F[1][4]|
+		moveleftf->reachleftf->F[0][4]|
+		moveback -> F[0][5]|
+		movefront -> F[0][3]),
+F[1][4] = (
+		moveleftf-> F[0][4]| 
+		moverightf-> F[2][4]| 
+		movefront-> F[1][3]|
+		moveback -> F[1][5]),
+F[2][4] = (
+		moveleftf-> F[1][4]| 
+		moverightf -> F[3][4]|
+		movefront  -> F[2][3]|
+		moveback -> F[2][5]),
+F[3][4] = (
+		moverightf-> F[4][4]|
+		moveleftf->F[2][4]|
+		moveback -> F[3][5]|
+		movefront -> F[3][3]),
+F[4][4] = (
+		moveleftf-> F[3][4]| 
+		moverightf-> F[5][4]|
+		moveback -> F[4][5]| 
+		movefront-> F[4][3]),
+F[5][4] = (
+		moveleftf-> F[4][4]| 
+		moverightf -> F[6][4]|
+		moveback -> F[5][5]|
+		movefront -> F[5][3]),
+F[6][4] = (
+		moverightf-> F[7][4]|
+		moveleftf->F[5][4]|
+		moveback -> F[6][5]|
+		movefront -> F[6][3]),
+F[7][4] = (
+		moveleftf-> F[6][4]| 
+		moverightf-> F[8][4]|
+		moveback -> F[7][5]| 
+		movefront -> F[7][3]),
+F[8][4] = (
+		moveleftf-> F[7][4]| 
+		moverightf -> F[9][4]|
+		moveback -> F[8][5]|
+		movefront -> F[8][3]),
+F[9][4] = (
+		moverightf-> F[10][4]|
+		moveleftf->F[8][4]|
+		moveback -> F[9][5]|
+		movefront  -> F[9][3]),
+F[10][4] = (
+		moveleftf-> F[9][4]| 
+		moverightf-> F[11][4]|
+		moveback -> F[10][5]| 
+		movefront -> F[10][4]),
+F[11][4] = (
+		moveleftf-> F[10][4]| 
+		moverightf -> F[12][4]|
+		moveback -> F[11][5]|
+		movefront -> F[11][3]),
+F[12][4] = (
+		moverightf-> F[13][4]|
+		moveleftf->F[11][4]|
+		moveback -> F[12][5]|
+		movefront -> F[12][3]),
+F[13][4] = (
+		moveleftf-> F[12][4]| 
+		moverightf->reachrightf-> F[13][4]|
+		moveback -> F[13][5]| 
+		movefront -> F[13][3]),
+
+
+
+
+F[0][3] = (
+		moverightf-> F[1][3]|
+		moveleftf->reachleftf->F[0][3]|
+		moveback -> F[0][4]|
+		movefront -> F[0][2]),
+F[1][3] = (
+		moveleftf-> F[0][3]| 
+		moverightf-> F[2][3]| 
+		movefront-> F[1][2]|
+		moveback -> F[1][4]),
+F[2][3] = (
+		moveleftf-> F[1][3]| 
+		moverightf -> F[3][3]|
+		movefront  -> F[2][2]|
+		moveback -> F[2][4]),
+F[3][3] = (
+		moverightf-> F[4][3]|
+		moveleftf->F[2][3]|
+		moveback -> F[3][4]|
+		movefront -> F[3][2]),
+F[4][3] = (
+		moveleftf-> F[3][3]| 
+		moverightf-> F[5][3]|
+		moveback -> F[4][4]| 
+		movefront-> F[4][2]),
+F[5][3] = (
+		moveleftf-> F[4][3]| 
+		moverightf -> F[6][3]|
+		moveback -> F[5][4]|
+		movefront -> F[5][2]),
+F[6][3] = (
+		moverightf-> F[7][3]|
+		moveleftf->F[5][3]|
+		moveback -> F[6][4]|
+		movefront -> F[6][2]),
+F[7][3] = (
+		moveleftf-> F[6][3]| 
+		moverightf-> F[8][3]|
+		moveback -> F[7][4]| 
+		movefront -> F[7][2]),
+F[8][3] = (
+		moveleftf-> F[7][3]| 
+		moverightf -> F[9][3]|
+		moveback -> F[8][4]|
+		movefront -> F[8][2]),
+F[9][3] = (
+		moverightf-> F[10][3]|
+		moveleftf->F[8][3]|
+		moveback -> F[9][4]|
+		movefront  -> F[9][2]),
+F[10][3] = (
+		moveleftf-> F[9][3]| 
+		moverightf-> F[11][3]|
+		moveback -> F[10][4]| 
+		movefront -> F[10][2]),
+F[11][3] = (
+		moveleftf-> F[10][3]| 
+		moverightf -> F[12][3]|
+		moveback -> F[11][4]|
+		movefront -> F[11][2]),
+F[12][3] = (
+		moverightf-> F[13][3]|
+		moveleftf->F[11][3]|
+		moveback -> F[12][4]|
+		movefront -> F[12][2]),
+F[13][3] = (
+		moveleftf-> F[12][3]| 
+		moverightf->reachrightf-> F[13][3]|
+		moveback -> F[13][4]| 
+		movefront -> F[13][2]),
+
+
+
+F[0][2] = (
+		moverightf-> F[1][2]|
+		moveleftf->reachleftf->F[0][2]|
+		moveback -> F[0][3]|
+		movefront -> F[0][1]),
+F[1][2] = (
+		moveleftf-> F[0][2]| 
+		moverightf-> F[2][2]| 
+		movefront-> F[1][1]|
+		moveback -> F[1][3]),
+F[2][2] = (
+		moveleftf-> F[1][2]| 
+		moverightf -> F[3][2]|
+		movefront  -> F[2][1]|
+		moveback -> F[2][3]),
+F[3][2] = (
+		moverightf-> F[4][2]|
+		moveleftf->F[2][2]|
+		moveback -> F[3][3]|
+		movefront -> F[3][1]),
+F[4][2] = (
+		moveleftf-> F[3][2]| 
+		moverightf-> F[5][2]|
+		moveback -> F[4][3]| 
+		movefront-> F[4][1]),
+F[5][2] = (
+		moveleftf-> F[4][2]| 
+		moverightf -> F[6][2]|
+		moveback -> F[5][3]|
+		movefront -> F[5][1]),
+F[6][2] = (
+		moverightf-> F[7][2]|
+		moveleftf->F[5][2]|
+		moveback -> F[6][3]|
+		movefront -> F[6][1]),
+F[7][2] = (
+		moveleftf-> F[6][2]| 
+		moverightf-> F[8][2]|
+		moveback -> F[7][3]| 
+		movefront -> F[7][1]),
+F[8][2] = (
+		moveleftf-> F[7][2]| 
+		moverightf -> F[9][2]|
+		moveback -> F[8][3]|
+		movefront -> F[8][1]),
+F[9][2] = (
+		moverightf-> F[10][2]|
+		moveleftf->F[8][2]|
+		moveback -> F[9][3]|
+		movefront  -> F[9][1]),
+F[10][2] = (
+		moveleftf-> F[9][2]| 
+		moverightf-> F[11][2]|
+		moveback -> F[10][3]| 
+		movefront -> F[10][1]),
+F[11][2] = (
+		moveleftf-> F[10][2]| 
+		moverightf -> F[12][2]|
+		moveback -> F[11][3]|
+		movefront -> F[11][1]),
+F[12][2] = (
+		moverightf-> F[13][2]|
+		moveleftf->F[11][2]|
+		moveback -> F[12][3]|
+		movefront -> F[12][1]),
+F[13][2] = (
+		moveleftf-> F[12][2]| 
+		moverightf->reachrightf-> F[13][2]|
+		moveback -> F[13][3]| 
+		movefront -> F[13][1]),
+
+
+
+F[0][1] = (
+		moverightf-> F[1][1]|
+		moveleftf->reachleftf->F[0][1]|
+		moveback -> F[0][2]|
+		movefront -> F[0][0]),
+F[1][1] = (
+		moveleftf-> F[0][1]| 
+		moverightf-> F[2][1]| 
+		movefront-> F[1][0]|
+		moveback -> F[1][2]),
+F[2][1] = (
+		moveleftf-> F[1][1]| 
+		moverightf -> F[3][1]|
+		movefront  -> F[2][0]|
+		moveback -> F[2][2]),
+F[3][1] = (
+		moverightf-> F[4][1]|
+		moveleftf->F[2][1]|
+		moveback -> F[3][2]|
+		movefront -> F[3][0]),
+F[4][1] = (
+		moveleftf-> F[3][1]| 
+		moverightf-> F[5][1]|
+		moveback -> F[4][2]| 
+		movefront-> F[4][0]),
+F[5][1] = (
+		moveleftf-> F[4][1]| 
+		moverightf -> F[6][1]|
+		moveback -> F[5][2]|
+		movefront -> F[5][0]),
+F[6][1] = (
+		moverightf-> F[7][1]|
+		moveleftf->F[5][1]|
+		moveback -> F[6][2]|
+		movefront -> F[6][0]),
+F[7][1] = (
+		moveleftf-> F[6][1]| 
+		moverightf-> F[8][1]|
+		moveback -> F[7][2]| 
+		movefront -> F[7][0]),
+F[8][1] = (
+		moveleftf-> F[7][1]| 
+		moverightf -> F[9][1]|
+		moveback -> F[8][2]|
+		movefront -> F[8][0]),
+F[9][1] = (
+		moverightf-> F[10][1]|
+		moveleftf->F[8][1]|
+		moveback -> F[9][2]|
+		movefront  -> F[9][0]),
+F[10][1] = (
+		moveleftf-> F[9][1]| 
+		moverightf-> F[11][1]|
+		moveback -> F[10][2]| 
+		movefront -> F[10][0]),
+F[11][1] = (
+		moveleftf-> F[10][1]| 
+		moverightf -> F[12][1]|
+		moveback -> F[11][2]|
+		movefront -> F[11][0]),
+F[12][1] = (
+		moverightf-> F[13][1]|
+		moveleftf->F[11][1]|
+		moveback -> F[12][2]|
+		movefront -> F[12][0]),
+F[13][1] = (
+		moveleftf-> F[12][1]| 
+		moverightf->reachrightf-> F[13][1]|
+		moveback -> F[13][2]| 
+		movefront -> F[13][0]),
+
+
+
+F[0][0] = (
+		moverightf-> F[1][0]|
+		moveleftf->reachleftf->F[0][0]|
+		moveback -> F[0][1]),
+F[1][0] = (
+		moveleftf-> F[0][0]| 
+		moverightf-> F[2][0]|
+		moveback -> F[1][1]),
+F[2][0] = (
+		moveleftf-> F[1][0]| 
+		moverightf -> F[3][0]|
+		moveback -> F[2][1]),
+F[3][0] = (
+		moverightf-> F[4][0]|
+		moveleftf->F[2][0]|
+		moveback -> F[3][1]),
+F[4][0] = (
+		moveleftf-> F[3][0]| 
+		moverightf-> F[5][0]|
+		moveback -> F[4][1]),
+F[5][0] = (
+		moveleftf-> F[4][0]| 
+		moverightf -> F[6][0]|
+		moveback -> F[5][1]),
+F[6][0] = (
+		moverightf-> F[7][0]|
+		moveleftf->F[5][0]|
+		moveback -> F[6][1]),
+F[7][0] = (
+		moveleftf-> F[6][0]| 
+		moverightf-> F[8][0]|
+		moveback -> F[7][1]),
+F[8][0] = (
+		moveleftf-> F[7][0]| 
+		moverightf -> F[9][0]|
+		moveback -> F[8][1]),
+F[9][0] = (
+		moverightf-> F[10][0]|
+		moveleftf->F[8][0]|
+		moveback -> F[9][1]),
+F[10][0] = (
+		moveleftf-> F[9][0]| 
+		moverightf-> F[11][0]|
+		moveback -> F[10][1]),
+F[11][0] = (
+		moveleftf-> F[10][0]| 
+		moverightf -> F[12][0]|
+		moveback -> F[11][1]),
+F[12][0] = (
+		moverightf-> F[13][0]|
+		moveleftf->F[11][0]|
+		moveback -> F[12][1]),
+F[13][0] = (
+		moveleftf-> F[12][0]| 
+		moverightf->reachrightf-> F[13][0]|
+		moveback -> F[13][1]|
+		enterstair -> STAIR).
+
+controllerSpec SPECIFICATION1 = {
+	safety = {DuplicateDown,CLEAN,ChangeStair,ConstRight,ConstLeft,RL,RR,INVALID}
+//	safety = {DuplicateDown,CLEAN,ChangeStair,ConstLeft}
+//	safety = {DuplicateDown,CLEAN,ConstRight,ConstLeft,RL,RR,INVALID}	
+	assumption = {DOWNS}
+	liveness = {SWEEP_RIGHT,SWEEP_LEFT}
+	controllable = {StairControllable}
+}
+controller ||STAIR_SWEEP = (STAIR)~{SPECIFICATION1}.
+
+
+controllerSpec SPECIFICATION2 = {
+	safety = {}
+	assumption ={MOVE_FRONT}
+	liveness = {SWEEP_RIGHTF,SWEEP_LEFTF}
+	controllable = {Controllable2}
+}
+controller ||C2 = (F1)~{SPECIFICATION2}.
+
+||SWEEP = (C2||STAIR_SWEEP).

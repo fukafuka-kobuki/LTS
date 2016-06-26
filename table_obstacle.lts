@@ -1,0 +1,187 @@
+const X_MAX =2
+const Y_MAX =2
+range X = 0..X_MAX
+range Y = 0..Y_MAX
+
+
+set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1],  jump[X_MAX+1][Y], jump[X][Y_MAX+1], jump[-1][Y], jump[X][-1]}
+set JumpAction = {jump[X][Y]}
+set MoveAction = {move[X][Y],JumpAction,stop[X][Y], Out}
+
+//set Out ={move[X_MAX+1][Y], move[X][Y_MAX+1], move[-1][Y], move[X][-1]}
+//set MoveAction = {move[X][Y],jump[X][Y] ,Out}
+set Controllable = {on,off, navigation,MoveAction, Out}
+set Actions ={Controllable, end, out}
+
+
+fluent OFF = <off, on>
+fluent ON = <on, off>
+//fluent LOCATION00 = <on,MoveAction>
+fluent LOCATION[x:X][y:Y]=<{move[x][y],stop[x][y]},{MoveAction}\{move[x][y],stop[x][y]}>
+//fluent LOCATION[x:X][y:Y]=<{move[x][y]},{MoveAction}\{move[x][y]}>
+fluent NAVIGATION = <navigation, end>
+
+assert TURN_OFF = (OFF&&LOCATION[0][0])
+assert TURN_ON = ON
+assert NAVIGATION_GOAL = (LOCATION[2][2]&&NAVIGATION)
+
+
+fluent JUMP[x:X][y:Y] = <jump[x][y],MoveAction\{jump[x][y]}>
+
+//assert MISS_JUMP99 =(LOCATION00&&JUMP[0][1])
+//assert MISS_JUMP98 =(LOCATION00&&JUMP[1][0])
+
+assert MISS_JUMP0 =(LOCATION[0][0]&&JUMP[0][1])
+assert MISS_JUMP1 =(LOCATION[0][0]&&JUMP[1][0])
+
+assert MISS_JUMP2 =(LOCATION[0][1]&&JUMP[0][2])
+assert MISS_JUMP3 =(LOCATION[0][1]&&JUMP[1][1])
+assert MISS_JUMP4 =(LOCATION[0][1]&&JUMP[0][0])
+
+assert MISS_JUMP5 =(LOCATION[0][2]&&JUMP[1][2])
+assert MISS_JUMP6 =(LOCATION[0][2]&&JUMP[0][1])
+
+assert MISS_JUMP7 =(LOCATION[1][0]&&JUMP[1][1])
+assert MISS_JUMP8 =(LOCATION[1][0]&&JUMP[2][0])
+assert MISS_JUMP9 =(LOCATION[1][0]&&JUMP[0][0])
+
+assert MISS_JUMP10 =(LOCATION[1][1]&&JUMP[1][0])
+assert MISS_JUMP11 =(LOCATION[1][1]&&JUMP[0][1])
+assert MISS_JUMP12 =(LOCATION[1][1]&&JUMP[2][1])
+assert MISS_JUMP13 =(LOCATION[1][1]&&JUMP[1][2])
+
+assert MISS_JUMP14 =(LOCATION[1][2]&&JUMP[1][1])
+assert MISS_JUMP15 =(LOCATION[1][2]&&JUMP[0][2])
+assert MISS_JUMP16 =(LOCATION[1][2]&&JUMP[2][2])
+
+assert MISS_JUMP17 =(LOCATION[2][0]&&JUMP[2][1])
+assert MISS_JUMP18 =(LOCATION[2][0]&&JUMP[1][0])
+
+assert MISS_JUMP19 =(LOCATION[2][1]&&JUMP[1][1])
+assert MISS_JUMP20 =(LOCATION[2][1]&&JUMP[2][0])
+assert MISS_JUMP21 =(LOCATION[2][1]&&JUMP[2][2])
+
+assert MISS_JUMP22 =(LOCATION[2][2]&&JUMP[1][2])
+assert MISS_JUMP23 =(LOCATION[2][2]&&JUMP[2][1])
+
+//ltl_property INVALID_MOVE99 = []!(MISS_JUMP99)
+//ltl_property INVALID_MOVE98 = []!(MISS_JUMP98)
+
+ltl_property INVALID_MOVE0 = []!(MISS_JUMP0)
+ltl_property INVALID_MOVE1 = []!(MISS_JUMP1)
+ltl_property INVALID_MOVE2 = []!(MISS_JUMP2)
+ltl_property INVALID_MOVE3 = []!(MISS_JUMP3)
+ltl_property INVALID_MOVE4 = []!(MISS_JUMP4)
+ltl_property INVALID_MOVE5 = []!(MISS_JUMP5)
+ltl_property INVALID_MOVE6 = []!(MISS_JUMP6)
+ltl_property INVALID_MOVE7 = []!(MISS_JUMP7)
+ltl_property INVALID_MOVE8 = []!(MISS_JUMP8)
+ltl_property INVALID_MOVE9 = []!(MISS_JUMP9)
+ltl_property INVALID_MOVE10 = []!(MISS_JUMP10)
+ltl_property INVALID_MOVE11 = []!(MISS_JUMP11)
+ltl_property INVALID_MOVE12 = []!(MISS_JUMP12)
+ltl_property INVALID_MOVE13 = []!(MISS_JUMP13)
+ltl_property INVALID_MOVE14 = []!(MISS_JUMP14)
+ltl_property INVALID_MOVE15 = []!(MISS_JUMP15)
+ltl_property INVALID_MOVE16 = []!(MISS_JUMP16)
+ltl_property INVALID_MOVE17 = []!(MISS_JUMP17)
+ltl_property INVALID_MOVE18 = []!(MISS_JUMP18)
+ltl_property INVALID_MOVE19 = []!(MISS_JUMP19)
+ltl_property INVALID_MOVE20 = []!(MISS_JUMP20)
+ltl_property INVALID_MOVE21 = []!(MISS_JUMP21)
+ltl_property INVALID_MOVE22 = []!(MISS_JUMP22)
+ltl_property INVALID_MOVE23 = []!(MISS_JUMP23)
+
+fluent OUT =<Out , {Actions}\{Out}>
+ltl_property INVALID_ACTION= []!(OUT)
+
+L1 = START,
+START = (on->L[0][0]),
+L[0][0] = (navigation ->end-> L[0][0]|
+		move[0][1]-> L[0][1]| 
+		move[1][0]-> L[1][0]|
+		jump[0][1]->stop[0][1]-> L[0][1]| 
+		jump[1][0]->stop[1][0]-> L[1][0]|
+		off -> START),
+
+L[0][1] = (navigation ->end-> L[0][1]|
+		move[0][2]-> L[0][2]| 
+		move[1][1]-> L[1][1]|
+		move[0][0]-> L[0][0]|
+		jump[0][2]->stop[0][2]-> L[0][2]| 
+		jump[1][1]->stop[1][1]-> L[1][1]|
+		jump[0][0]->stop[0][0]-> L[0][0]|
+		off -> START),
+
+L[0][2] = (navigation ->end->L[0][2]|
+		move[1][2]-> L[1][2]|
+		move[0][1]-> L[0][1]|
+		jump[1][2]->stop[1][2]-> L[1][2]|
+		jump[0][1]->stop[0][1]-> L[0][1]|
+		off -> START),
+
+L[1][0] = (navigation ->end-> L[1][0]|
+		move[1][1]-> L[1][1]|
+		move[0][0]-> L[0][0]|
+		move[2][0]-> L[2][0]|
+		jump[1][1]->stop[1][1]-> L[1][1]|
+		jump[0][0]->stop[0][0]-> L[0][0]|
+		jump[2][0]->stop[2][0]-> L[2][0]|
+		off -> START),
+
+L[1][1] = (navigation ->end-> L[1][1]|
+		move[0][1]-> L[0][1]|
+		move[1][0]-> L[1][0]|
+		move[2][1]-> L[2][1]|
+		move[1][2]-> L[1][2]|
+		jump[0][1]->stop[0][1]-> L[0][1]|
+		jump[1][0]->stop[1][0]-> L[1][0]|
+		jump[2][1]->stop[2][1]-> L[2][1]|
+		jump[1][2]->stop[1][2]-> L[1][2]|
+		off -> START),
+
+L[1][2] = (navigation -> end->L[1][2]|
+		move[0][2]-> L[0][2]|
+		move[2][2]-> L[2][2]|
+		move[1][1]-> L[1][1]|
+		jump[0][2]->stop[0][2]-> L[0][2]|
+		jump[2][2]->stop[2][2]-> L[2][2]|
+		jump[1][1]->stop[1][1]-> L[1][1]|
+		off -> START),
+
+L[2][0] = (navigation ->end-> L[2][0]|
+		move[1][0]-> L[1][0]|
+		move[2][1]-> L[2][1]|
+		jump[1][0]->stop[1][0]-> L[1][0]|
+		jump[2][1]->stop[2][1]-> L[2][1]|
+		off -> START),
+
+L[2][1] = (navigation ->end-> L[2][1]|
+		move[2][2]-> L[2][2]| 
+		move[2][0]-> L[2][0]|
+		move[1][1]-> L[1][1]|
+		jump[2][2]->stop[2][2]-> L[2][2]| 
+		jump[2][0]->stop[2][0]-> L[2][0]|
+		jump[1][1]->stop[1][1]-> L[1][1]|
+		off -> START),
+
+L[2][2] = (navigation ->end-> L[2][2]| 
+		move[2][1]-> L[2][1]| 
+		move[1][2]-> L[1][2]|
+		jump[2][1]->stop[2][1]-> L[2][1]| 
+		jump[1][2]->stop[1][2]-> L[1][2]|
+		off -> START)
+,
+
+OUT_CONTROLL = (out -> OUT_CONTROLL).
+
+
+controllerSpec SPECIFICATION = {
+	safety = {INVALID_ACTION,INVALID_MOVE1,INVALID_MOVE2,INVALID_MOVE3,INVALID_MOVE4,INVALID_MOVE5,INVALID_MOVE6,INVALID_MOVE7,INVALID_MOVE8,INVALID_MOVE9,INVALID_MOVE10,INVALID_MOVE11,INVALID_MOVE12,INVALID_MOVE13,INVALID_MOVE14,INVALID_MOVE15,INVALID_MOVE16,INVALID_MOVE17,INVALID_MOVE18,INVALID_MOVE19,INVALID_MOVE20,INVALID_MOVE21,INVALID_MOVE22,INVALID_MOVE23}
+//	safety = {INVALID_ACTION,INVALID_MOVE1,INVALID_MOVE2,INVALID_MOVE99,INVALID_MOVE98,INVALID_MOVE3,INVALID_MOVE4,INVALID_MOVE5,INVALID_MOVE6,INVALID_MOVE7,INVALID_MOVE8,INVALID_MOVE9,INVALID_MOVE10,INVALID_MOVE11,INVALID_MOVE12,INVALID_MOVE13,INVALID_MOVE14,INVALID_MOVE15,INVALID_MOVE16,INVALID_MOVE17,INVALID_MOVE18,INVALID_MOVE19,INVALID_MOVE20,INVALID_MOVE21,INVALID_MOVE22,INVALID_MOVE23}
+	assumption ={TURN_ON}
+	liveness = {NAVIGATION_GOAL,TURN_OFF}
+	controllable = {Controllable}
+}
+
+controller ||C = (L1)~{SPECIFICATION}.
