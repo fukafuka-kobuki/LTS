@@ -1,11 +1,11 @@
-const MaxX = 2
-const MaxY = 2
+const MaxX = 4
+const MaxY = 4
 const MaxTime = 10
 
 const RestX = MaxX + 1
 const RestY = MaxY + 1
 
-const AgentNum = 2
+const AgentNum = 4
 
 range X = 0..MaxX
 range Y = 0..MaxY
@@ -40,7 +40,9 @@ GETTING = (acceptRobot -> startNewSpec -> WAITING).
 //START(I = 0) = (start -> INITIAL),
 INITIAL(I = 0) = (when (I == 0) [I].arrive[1][1]->start -> STORAGE[1][1]
 			|when (I ==1) [I].arrive[1][0] ->start-> STORAGE[1][0]
-			|when (I ==2) [I].arrive[0][0] ->start-> STORAGE[0][0]),
+			|when (I ==2) [I].arrive[0][0] ->start-> STORAGE[0][0]
+			|when (I ==3) [I].arrive[0][1] ->start-> STORAGE[0][1]
+),
 STORAGE[x:X][y:Y] = (when (x < MaxX) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
 					|when (x > 0) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
 					|when (x == MaxX) [I].move['e] -> [I].arriveShipping[y]->[I].wait-> SHIPPING[y]
@@ -312,24 +314,134 @@ controllerSpec KIVASPEC2 = {
 }
 controller ||KivaCONT2 = (INITIAL(2))~{KIVASPEC2}.
 
-||ALLCONT = (KivaCONT0 || KivaCONT1|| KivaCONT2).
+
+
+
+set MoveAction3 = {[3].move[Direction]}
+set Controllable3 = {MoveAction3, [3].wait, [3].pick, [3].put, start, end}
+ltl_property RePICK3 = []((Pick[3] ->X! [3].pick)) //二重pick
+ltl_property RePUT3 = []((Put[3] -> X! [3].put))	//二重put
+ltl_property InvalidPUT3 = [](!Put[3])
+ltl_property InvalidEnd3 = [](!Finish W Goal34)
+ltl_property ImidiatePick3 = [](ArriveStorage[3][0][1]-> X Pick[3])
+ltl_property InvalidMoveW3 = []([3].move['e] -> (!X [3].move['w] W (ArriveStation[3])))
+ltl_property InvalidMoveE3 = []([3].move['w] -> (!X [3].move['e] W (ArriveStation[3])))
+ltl_property InvalidMoveN3 = []([3].move['s] -> (!X [3].move['n] W (ArriveStation[3])))
+ltl_property InvalidMoveS3 = []([3].move['n] -> (!X [3].move['s] W (ArriveStation[3])))
+
+fluent INVALID_STATION3[a:A] = <{[a].arriveReplenish[X],[a].arriveShipping[Y],[a].arriveInduction[Y],[a].arrivePicking[X]}\{[a].arriveShipping[1],[a].arriveInduction[1],[a].arrivePicking[0]}, {[a].arrive[X][Y],reset}>
+ltl_property InvalidArriveStation3 = []!(INVALID_STATION3[3])
+
+fluent TaskFlag30 = <[3].arrive[0][1],reset>
+fluent FlagforTask31 = <[3].arriveInduction[1], reset>
+fluent FlagforTask32 = <[3].arrivePicking[0], reset>
+fluent FlagforTask33 = <[3].arriveShipping[1], reset>
+
+ltl_property InvalidReturn31 = [](FlagforTask31 -> (!X [3].arriveInduction[0] W (reset)))
+ltl_property InvalidReturn32 = [](FlagforTask32 -> (!X [3].arrivePicking[3] W (reset)))
+ltl_property InvalidReturn33 = [](FlagforTask33 -> (!X [3].arriveShipping[1] W (reset)))
+assert TaskFirst3 = (TaskFlag30 && Pick[3])
+ltl_property GOAL32 = [] (!(ArriveInduction[3][1]) W (TaskFirst3))
+ltl_property GOAL33 = [] (!(ArrivePicking[3][0]) W (FlagforTask31))
+ltl_property GOAL34 = [] (!(ArriveShipping[3][1]) W (FlagforTask32))
+
+assert Goal31 = (ArriveStorage[3][0][1] && Pick[3])
+assert Goal32 = (ArriveInduction[3][1])
+assert Goal33 = (ArrivePicking[3][0])
+assert Goal34 = (ArriveShipping[3][1])
+
+controllerSpec KIVASPEC3 = {
+safety = {	
+InvalidEnd3,
+RePICK3,
+RePUT3,InvalidPUT3,ImidiatePick3,InvalidReturn31, InvalidReturn32, InvalidReturn33, InvalidArriveStation3,GOAL32,GOAL33,GOAL34}
+assumption = {StartTask}
+liveness = {Goal05}
+controllable = {Controllable3}}
+controller ||KivaCONT3 = (INITIAL(3))~{KIVASPEC3}.
+
+
+
+
+
 
 
 //ltl_property StopConflict =[] forall[x:X][y:Y]!((ArriveStorage[0][x][y] && ArriveStorage[1][x][y]))
-ltl_property StopConflict010T0 =[]!((ArriveStorage[0][0][0] && ArriveStorage[1][0][0]))
-ltl_property StopConflict010T1 =[]!((ArriveStorage[0][0][1] && ArriveStorage[1][0][1]))
-ltl_property StopConflict011T0 =[]!((ArriveStorage[0][1][0] && ArriveStorage[1][1][0]))
-ltl_property StopConflict011T1 =[]!((ArriveStorage[0][1][1] && ArriveStorage[1][1][1]))
-
-ltl_property StopConflict020T0 =[]!((ArriveStorage[0][0][0] && ArriveStorage[2][0][0]))
-ltl_property StopConflict020T1 =[]!((ArriveStorage[0][0][1] && ArriveStorage[2][0][1]))
-ltl_property StopConflict021T0 =[]!((ArriveStorage[0][1][0] && ArriveStorage[2][1][0]))
-ltl_property StopConflict021T1 =[]!((ArriveStorage[0][1][1] && ArriveStorage[2][1][1]))
-
-ltl_property StopConflict120T0 =[]!((ArriveStorage[2][0][0] && ArriveStorage[1][0][0]))
-ltl_property StopConflict120T1 =[]!((ArriveStorage[2][0][1] && ArriveStorage[1][0][1]))
-ltl_property StopConflict121T0 =[]!((ArriveStorage[2][1][0] && ArriveStorage[1][1][0]))
-ltl_property StopConflict121T1 =[]!((ArriveStorage[2][1][1] && ArriveStorage[1][1][1]))
+ltl_property StopConflict010T0 =[]!((ArriveStorage[0][0][0]&& ArriveStorage[1][0][0]))
+ltl_property StopConflict020T0 =[]!((ArriveStorage[0][0][0]&& ArriveStorage[2][0][0]))
+ltl_property StopConflict120T0 =[]!((ArriveStorage[1][0][0]&& ArriveStorage[2][0][0]))
+ltl_property StopConflict010T1 =[]!((ArriveStorage[0][0][1]&& ArriveStorage[1][0][1]))
+ltl_property StopConflict020T1 =[]!((ArriveStorage[0][0][1]&& ArriveStorage[2][0][1]))
+ltl_property StopConflict120T1 =[]!((ArriveStorage[1][0][1]&& ArriveStorage[2][0][1]))
+ltl_property StopConflict010T2 =[]!((ArriveStorage[0][0][2]&& ArriveStorage[1][0][2]))
+ltl_property StopConflict020T2 =[]!((ArriveStorage[0][0][2]&& ArriveStorage[2][0][2]))
+ltl_property StopConflict120T2 =[]!((ArriveStorage[1][0][2]&& ArriveStorage[2][0][2]))
+ltl_property StopConflict010T3 =[]!((ArriveStorage[0][0][3]&& ArriveStorage[1][0][3]))
+ltl_property StopConflict020T3 =[]!((ArriveStorage[0][0][3]&& ArriveStorage[2][0][3]))
+ltl_property StopConflict120T3 =[]!((ArriveStorage[1][0][3]&& ArriveStorage[2][0][3]))
+ltl_property StopConflict010T4 =[]!((ArriveStorage[0][0][4]&& ArriveStorage[1][0][4]))
+ltl_property StopConflict020T4 =[]!((ArriveStorage[0][0][4]&& ArriveStorage[2][0][4]))
+ltl_property StopConflict120T4 =[]!((ArriveStorage[1][0][4]&& ArriveStorage[2][0][4]))
+ltl_property StopConflict011T0 =[]!((ArriveStorage[0][1][0]&& ArriveStorage[1][1][0]))
+ltl_property StopConflict021T0 =[]!((ArriveStorage[0][1][0]&& ArriveStorage[2][1][0]))
+ltl_property StopConflict121T0 =[]!((ArriveStorage[1][1][0]&& ArriveStorage[2][1][0]))
+ltl_property StopConflict011T1 =[]!((ArriveStorage[0][1][1]&& ArriveStorage[1][1][1]))
+ltl_property StopConflict021T1 =[]!((ArriveStorage[0][1][1]&& ArriveStorage[2][1][1]))
+ltl_property StopConflict121T1 =[]!((ArriveStorage[1][1][1]&& ArriveStorage[2][1][1]))
+ltl_property StopConflict011T2 =[]!((ArriveStorage[0][1][2]&& ArriveStorage[1][1][2]))
+ltl_property StopConflict021T2 =[]!((ArriveStorage[0][1][2]&& ArriveStorage[2][1][2]))
+ltl_property StopConflict121T2 =[]!((ArriveStorage[1][1][2]&& ArriveStorage[2][1][2]))
+ltl_property StopConflict011T3 =[]!((ArriveStorage[0][1][3]&& ArriveStorage[1][1][3]))
+ltl_property StopConflict021T3 =[]!((ArriveStorage[0][1][3]&& ArriveStorage[2][1][3]))
+ltl_property StopConflict121T3 =[]!((ArriveStorage[1][1][3]&& ArriveStorage[2][1][3]))
+ltl_property StopConflict011T4 =[]!((ArriveStorage[0][1][4]&& ArriveStorage[1][1][4]))
+ltl_property StopConflict021T4 =[]!((ArriveStorage[0][1][4]&& ArriveStorage[2][1][4]))
+ltl_property StopConflict121T4 =[]!((ArriveStorage[1][1][4]&& ArriveStorage[2][1][4]))
+ltl_property StopConflict012T0 =[]!((ArriveStorage[0][2][0]&& ArriveStorage[1][2][0]))
+ltl_property StopConflict022T0 =[]!((ArriveStorage[0][2][0]&& ArriveStorage[2][2][0]))
+ltl_property StopConflict122T0 =[]!((ArriveStorage[1][2][0]&& ArriveStorage[2][2][0]))
+ltl_property StopConflict012T1 =[]!((ArriveStorage[0][2][1]&& ArriveStorage[1][2][1]))
+ltl_property StopConflict022T1 =[]!((ArriveStorage[0][2][1]&& ArriveStorage[2][2][1]))
+ltl_property StopConflict122T1 =[]!((ArriveStorage[1][2][1]&& ArriveStorage[2][2][1]))
+ltl_property StopConflict012T2 =[]!((ArriveStorage[0][2][2]&& ArriveStorage[1][2][2]))
+ltl_property StopConflict022T2 =[]!((ArriveStorage[0][2][2]&& ArriveStorage[2][2][2]))
+ltl_property StopConflict122T2 =[]!((ArriveStorage[1][2][2]&& ArriveStorage[2][2][2]))
+ltl_property StopConflict012T3 =[]!((ArriveStorage[0][2][3]&& ArriveStorage[1][2][3]))
+ltl_property StopConflict022T3 =[]!((ArriveStorage[0][2][3]&& ArriveStorage[2][2][3]))
+ltl_property StopConflict122T3 =[]!((ArriveStorage[1][2][3]&& ArriveStorage[2][2][3]))
+ltl_property StopConflict012T4 =[]!((ArriveStorage[0][2][4]&& ArriveStorage[1][2][4]))
+ltl_property StopConflict022T4 =[]!((ArriveStorage[0][2][4]&& ArriveStorage[2][2][4]))
+ltl_property StopConflict122T4 =[]!((ArriveStorage[1][2][4]&& ArriveStorage[2][2][4]))
+ltl_property StopConflict013T0 =[]!((ArriveStorage[0][3][0]&& ArriveStorage[1][3][0]))
+ltl_property StopConflict023T0 =[]!((ArriveStorage[0][3][0]&& ArriveStorage[2][3][0]))
+ltl_property StopConflict123T0 =[]!((ArriveStorage[1][3][0]&& ArriveStorage[2][3][0]))
+ltl_property StopConflict013T1 =[]!((ArriveStorage[0][3][1]&& ArriveStorage[1][3][1]))
+ltl_property StopConflict023T1 =[]!((ArriveStorage[0][3][1]&& ArriveStorage[2][3][1]))
+ltl_property StopConflict123T1 =[]!((ArriveStorage[1][3][1]&& ArriveStorage[2][3][1]))
+ltl_property StopConflict013T2 =[]!((ArriveStorage[0][3][2]&& ArriveStorage[1][3][2]))
+ltl_property StopConflict023T2 =[]!((ArriveStorage[0][3][2]&& ArriveStorage[2][3][2]))
+ltl_property StopConflict123T2 =[]!((ArriveStorage[1][3][2]&& ArriveStorage[2][3][2]))
+ltl_property StopConflict013T3 =[]!((ArriveStorage[0][3][3]&& ArriveStorage[1][3][3]))
+ltl_property StopConflict023T3 =[]!((ArriveStorage[0][3][3]&& ArriveStorage[2][3][3]))
+ltl_property StopConflict123T3 =[]!((ArriveStorage[1][3][3]&& ArriveStorage[2][3][3]))
+ltl_property StopConflict013T4 =[]!((ArriveStorage[0][3][4]&& ArriveStorage[1][3][4]))
+ltl_property StopConflict023T4 =[]!((ArriveStorage[0][3][4]&& ArriveStorage[2][3][4]))
+ltl_property StopConflict123T4 =[]!((ArriveStorage[1][3][4]&& ArriveStorage[2][3][4]))
+ltl_property StopConflict014T0 =[]!((ArriveStorage[0][4][0]&& ArriveStorage[1][4][0]))
+ltl_property StopConflict024T0 =[]!((ArriveStorage[0][4][0]&& ArriveStorage[2][4][0]))
+ltl_property StopConflict124T0 =[]!((ArriveStorage[1][4][0]&& ArriveStorage[2][4][0]))
+ltl_property StopConflict014T1 =[]!((ArriveStorage[0][4][1]&& ArriveStorage[1][4][1]))
+ltl_property StopConflict024T1 =[]!((ArriveStorage[0][4][1]&& ArriveStorage[2][4][1]))
+ltl_property StopConflict124T1 =[]!((ArriveStorage[1][4][1]&& ArriveStorage[2][4][1]))
+ltl_property StopConflict014T2 =[]!((ArriveStorage[0][4][2]&& ArriveStorage[1][4][2]))
+ltl_property StopConflict024T2 =[]!((ArriveStorage[0][4][2]&& ArriveStorage[2][4][2]))
+ltl_property StopConflict124T2 =[]!((ArriveStorage[1][4][2]&& ArriveStorage[2][4][2]))
+ltl_property StopConflict014T3 =[]!((ArriveStorage[0][4][3]&& ArriveStorage[1][4][3]))
+ltl_property StopConflict024T3 =[]!((ArriveStorage[0][4][3]&& ArriveStorage[2][4][3]))
+ltl_property StopConflict124T3 =[]!((ArriveStorage[1][4][3]&& ArriveStorage[2][4][3]))
+ltl_property StopConflict014T4 =[]!((ArriveStorage[0][4][4]&& ArriveStorage[1][4][4]))
+ltl_property StopConflict024T4 =[]!((ArriveStorage[0][4][4]&& ArriveStorage[2][4][4]))
+ltl_property StopConflict124T4 =[]!((ArriveStorage[1][4][4]&& ArriveStorage[2][4][4]))
 
 
 
@@ -375,15 +487,37 @@ StopConflict1T0,StopConflict1T1
 }
 controller ||AllNaiveManager = (ALL)~{ALLNaiveSPEC}.
 
+||ALLCONT = (KivaCONT0 || KivaCONT1|| KivaCONT2||KivaCONT3).
 
 controllerSpec ALLSPEC = {
 	safety = {
-StopConflict010T0,StopConflict010T1,
-StopConflict011T0,StopConflict011T1,
-StopConflict020T0,StopConflict020T1,
-StopConflict021T0,StopConflict021T1,
-StopConflict120T0,StopConflict120T1,
-StopConflict121T0,StopConflict121T1
+StopConflict010T0,StopConflict020T0,StopConflict120T0,
+StopConflict010T1,StopConflict020T1,StopConflict120T1,
+StopConflict010T2,StopConflict020T2,StopConflict120T2,
+StopConflict010T3,StopConflict020T3,StopConflict120T3,
+StopConflict010T4,StopConflict020T4,StopConflict120T4,
+StopConflict011T0,StopConflict021T0,StopConflict121T0,
+StopConflict011T1,StopConflict021T1,StopConflict121T1,
+StopConflict011T2,StopConflict021T2,StopConflict121T2,
+StopConflict011T3,StopConflict021T3,StopConflict121T3,
+StopConflict011T4,StopConflict021T4,StopConflict121T4,
+StopConflict012T0,StopConflict022T0,StopConflict122T0,
+StopConflict012T1,StopConflict022T1,StopConflict122T1,
+StopConflict012T2,StopConflict022T2,StopConflict122T2,
+StopConflict012T3,StopConflict022T3,StopConflict122T3,
+StopConflict012T4,StopConflict022T4,StopConflict122T4,
+StopConflict013T0,StopConflict023T0,StopConflict123T0,
+StopConflict013T1,StopConflict023T1,StopConflict123T1,
+StopConflict013T2,StopConflict023T2,StopConflict123T2,
+StopConflict013T3,StopConflict023T3,StopConflict123T3,
+StopConflict013T4,StopConflict023T4,StopConflict123T4,
+StopConflict014T0,StopConflict024T0,StopConflict124T0,
+StopConflict014T1,StopConflict024T1,StopConflict124T1,
+StopConflict014T2,StopConflict024T2,StopConflict124T2,
+StopConflict014T3,StopConflict024T3,StopConflict124T3,
+StopConflict014T4,StopConflict024T4,StopConflict124T4
+
+
 		}
 	controllable = {Controllable}
 }

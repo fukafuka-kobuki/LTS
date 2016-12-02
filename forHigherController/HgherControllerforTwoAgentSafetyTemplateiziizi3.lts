@@ -34,11 +34,12 @@ GETTING = (acceptRobot -> startNewSpec -> WAITING).
 
 
 //START(I = 0) = (start -> INITIAL),
-INITIAL(I = 0) = (when (I == 0) [I].arrive[0][0]->start -> STORAGE[0][0]
-			|when (I ==1) [I].arrive[2][0] ->start-> STORAGE[2][0]),
+INITIAL(I = 0) = (when (I == 0) [I].arrive[0][2]->start -> STORAGE[0][2]
+			|when (I ==1) [I].arrive[1][2] ->start-> STORAGE[1][2]),
 STORAGE[x:X][y:Y] = (
-					when (x < MaxX && y != 1) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
-					|when (x > 0 && y != 1) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
+					when (x < MaxX && I == 1) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x < MaxX && I == 0 && x!=0 && y!=2) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
+					|when (x > 0) [I].move['w] -> [I].arrive[x-1][y]-> STORAGE[x-1][y]
 					|when (x == MaxX) [I].move['e] -> [I].arriveShipping[y]->[I].wait-> SHIPPING[y]
 					|when (x == 0) [I].move['w] -> [I].arriveInduction[y]->[I].wait-> INDUCTION[y]
 					|when (y < MaxY) [I].move['s] -> [I].arrive[x][y+1]-> STORAGE[x][y+1]
@@ -93,7 +94,7 @@ ltl_property RePUT0 = []((Put[0] -> X! [0].put))	//二重put
 
 //場合によってはいらない場合のある要求
 //requirement which is needed when robot must pick pod
-ltl_property ImidiatePick0 = [](ArriveStorage[0][0][0]-> X Pick[0])
+ltl_property ImidiatePick0 = [](ArriveStorage[0][0][2]-> X Pick[0])
 ltl_property InvalidPUT0 = [](!Put[0])
 ltl_property InvalidEnd0 = [](!Finish W Goal04)
 
@@ -177,7 +178,7 @@ ltl_property RePUT1 = []((Put[1] -> X! [1].put))	//二重put
 //requirement which is needed when robot must pick pod
 ltl_property InvalidPUT1 = [](!Put[1])
 ltl_property InvalidEnd1 = [](!Finish W Goal12)
-ltl_property ImidiatePick1 = [](ArriveStorage[1][2][0]-> X Pick[1])
+ltl_property ImidiatePick1 = [](ArriveStorage[1][1][2]-> X Pick[1])
 
 ltl_property InvalidMoveW1 = []([1].move['e] -> (!X [1].move['w] W (ArriveStation[1])))
 ltl_property InvalidMoveE1 = []([1].move['w] -> (!X [1].move['e] W (ArriveStation[1])))

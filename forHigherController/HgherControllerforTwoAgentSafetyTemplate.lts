@@ -1,39 +1,26 @@
-const MaxX = 1
-const MaxY = 1
-const MaxTime = 10
+//example about automated warehouse
 
-const RestX = MaxX + 1
-const RestY = MaxY + 1
-
+//MaxX, MaxY: scale of warehouse
+//AgentNum: number of agent
+const MaxX = 5
+const MaxY = 5
 const AgentNum = 1
 
 range X = 0..MaxX
 range Y = 0..MaxY
-range Times = 0..MaxTime
 range A = 0..AgentNum
 
-
+//action [0].move[w] means "robot 0 move to west "
 set Direction = {e,w,n,s}
 set MoveAction0 = {[0].move[Direction]}
-
 set Controllable0  = {MoveAction0, [0].wait, [0].pick, [0].put, start, end}
 
 set MoveAction1 = {[1].move[Direction]}
 set Controllable1  = {MoveAction1, [1].wait, [1].pick, [1].put, start, end}
 
-//set ArriveAction0 = {[0].arriveReplenish[X], [0].arrivePicking[X], [0].arriveShipping[Y], [0].arriveInduction[Y]}
 set Controllable = {Controllable0, Controllable1}
 
-//set ArriveAction = { arriveInduction[Y], arrivePicking[X]}
 
-ENVforUPDATE = (start -> WAITING),
-WAITING = (changeArea -> REMOVING|
-			getRobot -> GETTING),
-REMOVING = (removeRobot -> startNewSpec -> WAITING),
-GETTING = (acceptRobot -> startNewSpec -> WAITING).
-
-
-//START(I = 0) = (start -> INITIAL),
 INITIAL(I = 0) = (when (I == 0) [I].arrive[1][1]->start -> STORAGE[1][1]
 			|when (I ==1) [I].arrive[1][0] ->start-> STORAGE[1][0]),
 STORAGE[x:X][y:Y] = (when (x < MaxX) [I].move['e] -> [I].arrive[x+1][y] -> STORAGE[x+1][y]
@@ -66,8 +53,6 @@ PICKING[x:X]=([I].move['s] -> [I].arrive[x][0]-> STORAGE[x][0]
  	(INITIAL(i)).
    
 
-//fluent Definition
-//about Arrive
 fluent ArriveStorage[a:A][x:X][y:Y] = <[a].arrive[x][y], {[a].move[Direction], reset}>//
 fluent ArriveInduction[a:A][y:Y] = <[a].arriveInduction[y], {[a].move['e],reset}>
 fluent ArrivePicking[a:A][x:X] = <[a].arrivePicking[x], {[a].move['s],reset}>
@@ -117,7 +102,6 @@ ltl_property InvalidReturn3 = [](FlagforTask3 -> (!X [0].arriveShipping[1] W (re
 
 assert TaskFirst = (TaskFlag0 && Pick[0])
 
-//ltl_property GOAL01 = [] ((ArriveStorage[0][1][1] && [0].pick) -> start)
 ltl_property GOAL02 = [] (!(ArriveInduction[0][1]) W (TaskFirst))
 ltl_property GOAL03 = [] (!(ArrivePicking[0][1]) W (FlagforTask1))
 ltl_property GOAL04 = [] (!(ArriveShipping[0][1]) W (FlagforTask2))
@@ -130,10 +114,7 @@ assert Goal03 = (ArrivePicking[0][1])
 assert Goal04 = (ArriveShipping[0][1])
 assert Goal05 =  Finish
 
-//ltl_property VisitDestination= [](ArriveInduction[0][1] && <> (ArrivePicking[0][1]) && <>(ArriveShipping[0][1]))
-
 ltl_property VisitDest = [](start -> (X<>ArriveInduction[0][1]))
-// && (<> ArrivePicking[0][1]) && (<>ArriveShipping[0][1]))
 
 
 controllerSpec KIVASPEC0 = {
